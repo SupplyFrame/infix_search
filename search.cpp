@@ -5,6 +5,8 @@
 #include<list>
 #include<stack>
 #include<vector>
+#include<string.h>
+#include<cstdlib>
 
 using namespace std;
 
@@ -237,7 +239,7 @@ void read_input(const char * dict_file){
   double start = clock();
   while(getline(ifs,line)){
     add(line);
-    if(i%10000==0)cerr<<"Current node count at line "<<i<<": "<<node_count<<endl;
+    if(i%100000==0)cerr<<"Current node count at line "<<i<<": "<<node_count<<endl;
     ++i;
   }
   cerr<<"TIME TO LOAD AND BUILD TRIE: "<<(clock()-start)/CLOCKS_PER_SEC<<endl;
