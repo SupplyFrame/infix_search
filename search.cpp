@@ -18,16 +18,12 @@ typedef map<char,node_t *> node_map_t;
 struct node_t{
   char val;
   node_map_t child_map;
-  //node_t * child;
-  //node_t * sibling_right;
-	//node_t * sibling_left;
   node_t * parent;
+  string tail;
   node_t(){
     val = '*';
-    //child = NULL;
-    //sibling_right = NULL;
-  	//sibling_left = NULL;
     parent = NULL;
+    tail="";
     ++node_count;
   }
 };
@@ -65,20 +61,65 @@ void add_to_lookup(char parent_val,node_t * child_node){
 }
 
 void add(string word){
-  bool debug = false;
+  bool debug = true;
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
+  if(head==NULL){
+    head = new node_t();
+    head->val = '*';
+  }
   traverse = head;
   node_t * previous = head;
   int i=0;
   while(i<len){
     node_t * child = NULL;
     node_t * parent = traverse; 
+    if(traverse->tail.length()){
+      if(debug) cerr<<"At addr "<<traverse<<endl;
+      int tail_index = 0;
+      string traverse_tail = traverse->tail;
+      if(debug)cerr<<"Traverse tail is "<<traverse_tail<<endl;
+      // count matches. If matches are equal then no need to branch off
+      int i_begin = i;
+      while(tail_index<traverse_tail.length() && i < word.length() &&
+      traverse_tail[tail_index]==word[i]){
+        if(debug) cerr<<"Comparing key "<<word[i]<<" to "<<traverse_tail[tail_index]<<" for i "<<i<<endl;
+        ++i;
+        ++tail_index;
+      }
+      if(i==word.length() && tail_index==traverse_tail.length()){
+        if(debug) cerr<<"Exact match to tail. Don't split.\n";
+        break;
+      }else{
+        if(debug) cerr<<"Not a match to tail. Mismatch is at tail_index "<<tail_index<<" and i "<<i<<".\n";
+        // clear out the tail of the parent
+        cerr<<"Clearing out node tail with address "<<traverse<<endl;
+        traverse->tail="";
+        // this loop builds a path up to before the mismatch
+        for(int j=i_begin;j<i;++j){
+          parent = traverse;
+          child = new node_t();
+          child->val = word[j];
+          traverse->child_map[word[j]] = child;
+          if(debug)cerr<<"No tail match. Added a new child with key "<<word[j]<<endl;
+          add_to_lookup(parent->val,child); 
+          traverse = child;
+          if(debug)cerr<<"traverse for "<<parent->val<<" to "<<word[j]<<" has addr "<<traverse<<endl;
+          traverse->parent = parent;
+        }
+        //traverse = parent; // backtrack one
+        if(tail_index<traverse_tail.length())
+        traverse->tail = traverse_tail.substr(tail_index);
+        //i = tail_index;
+        if(debug)cerr<<"After breaking up tail, at position "<<i<<" with suffix "<<traverse->tail<<" into address "<<traverse<<endl;
+      }
+    }
     if (traverse->child_map.find(word[i])==traverse->child_map.end()){
       child = new node_t();
       child->val = word[i];
+      if(word.length()>i+1) child->tail = word.substr(i+1);
       traverse->child_map[word[i]] = child;
-      if(debug)cerr<<"Added a new child with key "<<word[i]<<endl;
+      if(debug)cerr<<"No tail match. Added a new child with key "<<word[i]<<" and suffix "<<child->tail<<endl;
       add_to_lookup(parent->val,child); 
     }else{
       child = traverse->child_map[word[i]]; 
@@ -99,30 +140,38 @@ void traverse_up(node_t * node,stack<char> & up_stack){
 }
 
 void traverse_down_util(node_t * node, char path[],int pathLen,list<string> & suffixes){
+  bool debug = true;
   path[pathLen] = node->val;
+  if(debug ) cerr<<"parent-node at index "<<pathLen<<" is "<<node->parent->val<<node->val<<" with address "<<node<<" and tail "<<node->tail<<endl;
   ++pathLen;
   path[pathLen]='\0';
-  if (node->child_map.size()==0){
+  //if(debug) cerr<<"Node at addr "<<node<<" has tail "<<node->tail<<endl;
+  if (node->tail.length()!=0 ){ 
     string pathstr = string(path);
-    suffixes.push_back(pathstr);
-  }else{
+    ostringstream oss;
+    oss<<pathstr<<"*"<<node->tail;
+    suffixes.push_back(oss.str());
+    //suffixes.push_back(pathstr);
+  }
     for(node_map_t::iterator it = node->child_map.begin();it!=node->child_map.end();it++){
       node_t * node = it->second;
       //++pathLen;
       traverse_down_util(node,path,pathLen,suffixes);
     } 
-  }
+  
 }
 
-void traverse_down(node_t * node,list<string> & suffixes){
+void traverse_down(node_t * node,list<string> & suffixes,string orig_key){
   char path[100];
-  traverse_down_util(node,path,0,suffixes);
+  int key_len = orig_key.length();
+  for(int i=0;i<key_len;++i) path[i] = orig_key[i];
+  traverse_down_util(node,path,key_len-1,suffixes);
 }
 
 
 bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key){
-  bool debug = false;
-  //cerr<<"Substring is "<<sub_key<<" start is "<<start<<endl;
+  bool debug = true;
+  cerr<<"Substring is "<<sub_key<<" start is "<<start<<endl;
   if(sub_key.length()<2){
     if(debug)cerr<<"Found!\n";  
     stack<char> up_stack;
@@ -140,15 +189,15 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key)
     string prefix = string(buf);
     if(debug)cerr<<"PREFIX: "<<prefix<<endl;
     list<string> suffixes;
-    traverse_down(node,suffixes);
+    traverse_down(node,suffixes,orig_key);
     if(suffixes.size()>0){
       for(list<string>::iterator it = suffixes.begin();it!=suffixes.end();it++){
         string suffix = *it;
         if(debug)cerr<<"SUFFIX: "<<suffix<<endl;
-        cout<<"MATCH TO "<<prefix<<orig_key<<suffix<<endl;
+        cout<<"MATCH TO with suffix "<<prefix<<"*"<<suffix<<endl;
       }
     }else{
-        cout<<"MATCH TO "<<prefix<<orig_key<<endl;
+        cout<<"MATCH TO with no suffix "<<prefix<<"*"<<orig_key<<endl;
     }
     return true;
   }
@@ -163,7 +212,7 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key)
 }
 
 void find_path(string key){
-  bool debug = false;
+  bool debug = true;
   int keylen = key.length();
   if(nlmm.find(key[0])==nlmm.end()){
     cerr<<"Cannot start a path!";
@@ -182,36 +231,6 @@ void find_path(string key){
   }
 }
 
-bool find(string key){
-//  bool found = false;
-//  cerr<<"\nFinding key "<<key<<endl;
-//  int len = key.length();
-//  traverse = head;
-//  node_t * previous = head;
-//  int i=0;
-//  bool found_end = false;
-//  while(i<len && !found_end){
-//    if(traverse==NULL){
-//      cerr<<"Aborting search as leaf found.\n";
-//      found_end = true;
-//    }else{
-//      if(traverse->val == key[i]){
-//        cerr<<"Found match to "<<key[i]<<endl;
-//        if (i==(len-1)){
-//          cerr<<"Matched.\n";
-//        }
-//        traverse = traverse->child;
-//        cerr<<"Moving down\n";
-//        ++i;
-//      }else{
-//        traverse = traverse->sibling_right;
-//        cerr<<"No match to "<<key[i]<<" moving right"<<endl;
-//      }
-//    }
-//  }
-//  return i==len;
-  return true;
-}
 
 void read_query(const char * query_file,vector<string> & keys){
   ifstream ifs(query_file);
@@ -305,8 +324,6 @@ int main(int argc,char * argv[]){
     return 1;
   }
   parse_args(argc,argv);
-  head = new node_t();
-  head->val = '*';
   bool simple = false;
   if(simple){
     string words[]={"baby","bad","bank","box","dad","dance","abdade","abdadoma","dadomb"};
