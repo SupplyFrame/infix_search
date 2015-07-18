@@ -17,6 +17,7 @@ struct node_t;
 typedef map<char,node_t *> node_map_t;
 struct node_t{
   char val;
+  bool is_leaf;
   node_map_t child_map;
   node_t * parent;
   string tail;
@@ -24,6 +25,7 @@ struct node_t{
     val = '*';
     parent = NULL;
     tail="";
+    is_leaf = false;
     ++node_count;
   }
 };
@@ -74,16 +76,16 @@ void add(string word){
   while(i<len){
     node_t * child = NULL;
     node_t * parent = traverse; 
+    if(debug) cerr<<"Traverse is now at addr "<<traverse<<endl;
     if(traverse->tail.length()){
-      if(debug) cerr<<"At addr "<<traverse<<endl;
       int tail_index = 0;
       string traverse_tail = traverse->tail;
-      if(debug)cerr<<"Traverse tail is "<<traverse_tail<<endl;
+      if(debug)cerr<<"Traverse tail exists and is "<<traverse_tail<<". Comparing remainder of word to tail. "<<endl;
       // count matches. If matches are equal then no need to branch off
       int i_begin = i;
       while(tail_index<traverse_tail.length() && i < word.length() &&
       traverse_tail[tail_index]==word[i]){
-        if(debug) cerr<<"Comparing key "<<word[i]<<" to "<<traverse_tail[tail_index]<<" for i "<<i<<endl;
+        if(debug) cerr<<"Comparing key "<<word[i]<<" to tail "<<traverse_tail[tail_index]<<" for i "<<i<<endl;
         ++i;
         ++tail_index;
       }
@@ -95,21 +97,23 @@ void add(string word){
         // clear out the tail of the parent
         cerr<<"Clearing out node tail with address "<<traverse<<endl;
         traverse->tail="";
+        traverse->is_leaf = false;
         // this loop builds a path up to before the mismatch
         for(int j=i_begin;j<i;++j){
           parent = traverse;
           child = new node_t();
           child->val = word[j];
           traverse->child_map[word[j]] = child;
-          if(debug)cerr<<"No tail match. Added a new child with key "<<word[j]<<endl;
+          if(debug)cerr<<"Forging new path. Added a new child to "<<traverse<<" with key "<<word[j]<<endl;
           add_to_lookup(parent->val,child); 
           traverse = child;
-          if(debug)cerr<<"traverse for "<<parent->val<<" to "<<word[j]<<" has addr "<<traverse<<endl;
+          //if(debug)cerr<<"traverse for "<<parent->val<<" to "<<word[j]<<" has addr "<<traverse<<endl;
           traverse->parent = parent;
         }
         //traverse = parent; // backtrack one
         if(tail_index<traverse_tail.length())
         traverse->tail = traverse_tail.substr(tail_index);
+        traverse->is_leaf = true;
         //i = tail_index;
         if(debug)cerr<<"After breaking up tail, at position "<<i<<" with suffix "<<traverse->tail<<" into address "<<traverse<<endl;
       }
@@ -119,16 +123,18 @@ void add(string word){
       child->val = word[i];
       if(word.length()>i+1) child->tail = word.substr(i+1);
       traverse->child_map[word[i]] = child;
-      if(debug)cerr<<"No tail match. Added a new child with key "<<word[i]<<" and suffix "<<child->tail<<endl;
+      if(debug)cerr<<"No child "<<child<<" with key "<<word[i]<<". Added a new child with key "<<word[i]<<" and suffix "<<child->tail<<" into "<<traverse<<endl;
       add_to_lookup(parent->val,child); 
     }else{
       child = traverse->child_map[word[i]]; 
-      if(debug)cerr<<"Reusing child with key "<<word[i]<<endl;
+      if(debug)cerr<<"Reusing child with key "<<word[i]<<" at "<<child<<endl;
     }
     traverse = child;
     traverse->parent = parent;
     ++i;
   }
+  if(debug)cerr<<"Traverse is at child with addr "<<traverse<<endl;
+  traverse->is_leaf = true;
 }
 
 void traverse_up(node_t * node,stack<char> & up_stack){
@@ -146,7 +152,7 @@ void traverse_down_util(node_t * node, char path[],int pathLen,list<string> & su
   ++pathLen;
   path[pathLen]='\0';
   //if(debug) cerr<<"Node at addr "<<node<<" has tail "<<node->tail<<endl;
-  if (node->tail.length()!=0 ){ 
+  if (node->is_leaf ){ 
     string pathstr = string(path);
     ostringstream oss;
     oss<<pathstr<<"*"<<node->tail;
@@ -172,7 +178,7 @@ void traverse_down(node_t * node,list<string> & suffixes,string orig_key){
 bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key){
   bool debug = true;
   cerr<<"Substring is "<<sub_key<<" start is "<<start<<endl;
-  if(sub_key.length()<2){
+  if(sub_key.length()<2 || node==NULL){
     if(debug)cerr<<"Found!\n";  
     stack<char> up_stack;
     traverse_up(start->parent,up_stack);
@@ -189,7 +195,9 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key)
     string prefix = string(buf);
     if(debug)cerr<<"PREFIX: "<<prefix<<endl;
     list<string> suffixes;
-    traverse_down(node,suffixes,orig_key);
+    if(node!=NULL){
+      traverse_down(node,suffixes,orig_key);
+    }
     if(suffixes.size()>0){
       for(list<string>::iterator it = suffixes.begin();it!=suffixes.end();it++){
         string suffix = *it;
@@ -204,6 +212,9 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key)
   if (node->val==sub_key[0] && node->child_map.find(sub_key[1])!=node->child_map.end()){
     if(debug)cerr<<"Found a match from "<<sub_key[0]<<" to "<<sub_key[1]<<endl;
     find_path_util(node->child_map[sub_key[1]],sub_key.substr(1),start,orig_key);
+  }else if(node->tail.compare(sub_key.substr(1))==0){
+    if(debug)cerr<<"Found a match between tail "<<node->tail<<" and "<<sub_key.substr(1)<<endl;
+    find_path_util(NULL,sub_key.substr(1),start,orig_key);
   }else{
     if(debug)cerr<<"Not matched with sub key of "<<sub_key<<"\n";
     return false;
