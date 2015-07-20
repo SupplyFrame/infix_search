@@ -8,6 +8,7 @@
 #include<string.h>
 #include<cstdlib>
 
+  
 using namespace std;
 
 int node_count = 0;
@@ -63,7 +64,7 @@ void add_to_lookup(char parent_val,node_t * child_node){
 }
 
 void add(string word){
-  bool debug = word.compare("VJ1206A6R8DNNAC2M")==0;
+  bool debug = false;
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
   if(head==NULL){
@@ -147,7 +148,7 @@ void traverse_up(node_t * node,stack<char> & up_stack){
 }
 
 void traverse_down_util(node_t * node, char path[],int pathLen,list<string> & suffixes){
-  bool debug = true;
+  bool debug = false;
   path[pathLen] = node->val;
   if(debug ) cerr<<"parent-node at index "<<pathLen<<" is "<<node->parent->val<<node->val<<" with address "<<node<<" and tail "<<node->tail<<endl;
   ++pathLen;
@@ -177,7 +178,7 @@ void traverse_down(node_t * node,list<string> & suffixes,string orig_key){
 
 
 bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key,bool & exact_match){
-  bool debug = true;
+  bool debug = false;
   //if(debug)cerr<<"Substring is "<<sub_key<<" start,end is "<<start->val<<","<<node->val<<endl;
   if(sub_key.length()<2 || node==NULL){
     if(debug)cerr<<"Found!\n";  
@@ -251,7 +252,7 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key,
       }
       find_path_util(NULL,newstr,start,orig_key,exact_match);
     }else{
-      if(debug)cerr<<"Not matched with sub key of "<<sub_key<<"\n";
+      //if(debug)cerr<<"Not matched with sub key of "<<sub_key<<"\n";
       return false;
     }
   }
@@ -259,7 +260,7 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key,
 }
 
 void find_path(string key){
-  bool debug = true;
+  bool debug = false;
   int keylen = key.length();
   if(nlmm.find(key[0])==nlmm.end()){
     cerr<<"Cannot start a path!";
@@ -277,6 +278,7 @@ void find_path(string key){
         if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
         if(exact_match){
           if(debug)cerr<<"Exact match found. Breaking early from lookup table search\n";
+           break;
         }
       }
     }
