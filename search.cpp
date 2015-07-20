@@ -63,7 +63,7 @@ void add_to_lookup(char parent_val,node_t * child_node){
 }
 
 void add(string word){
-  bool debug = true;
+  bool debug = word.compare("VJ1206A6R8DNNAC2M")==0;
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
   if(head==NULL){
@@ -95,7 +95,7 @@ void add(string word){
       }else{
         if(debug) cerr<<"Not a match to tail. Mismatch is at tail_index "<<tail_index<<" and i "<<i<<".\n";
         // clear out the tail of the parent
-        cerr<<"Clearing out node tail with address "<<traverse<<endl;
+        if(debug)cerr<<"Clearing out node tail with address "<<traverse<<endl;
         traverse->tail="";
         traverse->is_leaf = false;
         // this loop builds a path up to before the mismatch
@@ -124,7 +124,8 @@ void add(string word){
       if(word.length()>i+1) child->tail = word.substr(i+1);
       traverse->child_map[word[i]] = child;
       if(debug)cerr<<"No child "<<child<<" with key "<<word[i]<<". Added a new child with key "<<word[i]<<" and suffix "<<child->tail<<" into "<<traverse<<endl;
-      add_to_lookup(parent->val,child); 
+      //GKC 2015-07-19
+      add_to_lookup(traverse->val,child); 
     }else{
       child = traverse->child_map[word[i]]; 
       if(debug)cerr<<"Reusing child with key "<<word[i]<<" at "<<child<<endl;
@@ -175,9 +176,9 @@ void traverse_down(node_t * node,list<string> & suffixes,string orig_key){
 }
 
 
-bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key){
+bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key,bool & exact_match){
   bool debug = true;
-  cerr<<"Substring is "<<sub_key<<" start is "<<start<<endl;
+  //if(debug)cerr<<"Substring is "<<sub_key<<" start,end is "<<start->val<<","<<node->val<<endl;
   if(sub_key.length()<2 || node==NULL){
     if(debug)cerr<<"Found!\n";  
     stack<char> up_stack;
@@ -197,7 +198,15 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key)
     list<string> suffixes;
     if(node!=NULL){
       traverse_down(node,suffixes,orig_key);
+    }else{ 
+      // case where tail was the suffix. Add to suffixes list
+      ostringstream oss;
+      oss<<orig_key<<"*"<<sub_key;
+      string newsuffix = oss.str();
+      if(debug) cerr<<"Adding "<<newsuffix<<" to suffix list\n";
+      suffixes.push_back(newsuffix);
     }
+    
     if(suffixes.size()>0){
       for(list<string>::iterator it = suffixes.begin();it!=suffixes.end();it++){
         string suffix = *it;
@@ -210,14 +219,41 @@ bool find_path_util(node_t * node,string sub_key,node_t * start,string orig_key)
     return true;
   }
   if (node->val==sub_key[0] && node->child_map.find(sub_key[1])!=node->child_map.end()){
-    if(debug)cerr<<"Found a match from "<<sub_key[0]<<" to "<<sub_key[1]<<endl;
-    find_path_util(node->child_map[sub_key[1]],sub_key.substr(1),start,orig_key);
-  }else if(node->tail.compare(sub_key.substr(1))==0){
-    if(debug)cerr<<"Found a match between tail "<<node->tail<<" and "<<sub_key.substr(1)<<endl;
-    find_path_util(NULL,sub_key.substr(1),start,orig_key);
+    if(debug)cerr<<"Found a match from "<<sub_key[0]<<" to "<<sub_key[1]<<" recursing on shorter str "<<sub_key.substr(1)<<" on node "<<node->child_map[sub_key[1]] <<endl;
+    exact_match = false;
+    find_path_util(node->child_map[sub_key[1]],sub_key.substr(1),start,orig_key,exact_match);
+    //}else{
+     // for(node_map_t::iterator it=node->child_map.begin();it!=node->child_map.end();it++){
+      //  if(debug)cerr<<" not found children from "<<node->val<<" are "<<it->first<<endl;
+      //}
+    //}
   }else{
-    if(debug)cerr<<"Not matched with sub key of "<<sub_key<<"\n";
-    return false;
+    // check if remainder of sub_key is a prefix of the tail
+    string remain = sub_key.substr(1);
+    int i=0,j=0;
+    while(i<remain.length() && j<node->tail.length()){
+      if (remain[i]!=node->tail[j]) break;
+      ++i;++j;
+    }
+    if(i==remain.length()){
+      if(debug)cerr<<"Subkey is a prefix of tail, accepting match. Node addr is "<<node<<"\n";
+      if(debug)cerr<<"Found a match between tail "<<node->tail<<" and "<<sub_key.substr(1)<<endl;
+      exact_match = false;
+      string newstr="";
+      if(i==node->tail.length()){
+        if(debug)cerr<<"Exact match found. Calling find_path_util on null string\n";
+        exact_match = true;
+        //find_path_util(NULL,"",start,orig_key);
+      }else{
+        newstr=node->tail.substr(i);
+        if(debug)cerr<<"Calling find_path_util on string "<<node->tail.substr(i)<<"\n";
+        //find_path_util(NULL,node->tail.substr(i),start,orig_key);
+      }
+      find_path_util(NULL,newstr,start,orig_key,exact_match);
+    }else{
+      if(debug)cerr<<"Not matched with sub key of "<<sub_key<<"\n";
+      return false;
+    }
   }
   return false;
 }
@@ -233,10 +269,15 @@ void find_path(string key){
     //node_list_map_t nlm = nlmm[key[0]];
     if (nlmm[key[0]].find(key[1])!=nlmm[key[0]].end()){
       node_list_t nl = nlmm[key[0]][key[1]];
+      bool exact_match = false;
       for(node_list_t::iterator it = nl.begin();it!=nl.end();it++){
-        if(debug)cerr<<"Calling path util from start\n";
         node_t * cur = *it;
-        find_path_util(cur,key.substr(1),cur->parent,key);
+        if(debug)cerr<<"Calling path util from start for pair "<<key[0]<<","<<key[1]<<"("<<cur<<")\n";
+        find_path_util(cur,key.substr(1),cur->parent,key,exact_match);
+        if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
+        if(exact_match){
+          if(debug)cerr<<"Exact match found. Breaking early from lookup table search\n";
+        }
       }
     }
   }
@@ -359,7 +400,6 @@ int main(int argc,char * argv[]){
       read_query(query_file.data(),keys);
       double start = clock();
       for(int i=0;i<keys.size();++i){
-        //bool res = find(keys[i]);
         cout<<"Result for key "<<keys[i]<<":"<<endl;
         find_path(keys[i]);
       }
