@@ -8,4 +8,4 @@ query='query.txt'
 #algo='linear'
 algo='trie'
 
-./search --algorithm $algo --dict $dict --query $query
+../bin/search --algorithm $algo --dict $dict --query $query
