@@ -47,8 +47,19 @@ private:
   // token 3: val is a char (0 or 1 byte)
   // tab delimiter (1 byte)
   // token 4: tail is a null terminated string (strlen + 1 byte)
+  // tab delimiter (1 byte)
   char * data;
 public:
+  // returns strlen
+  int get_token(int token_id,char buf[]);
+  void set_token(int token_id,char buf[]);
+  static const int TOKEN_SIBLING_PTR=0;
+  static const int TOKEN_CHILD_PTR=1;
+  static const int TOKEN_IS_LEAF = 2;
+  static const int TOKEN_VAL = 3;
+  static const int TOKEN_TAIL = 4;
+  static const char DELIM = '*';
+  static const char EOL = '\0';
   node2_list_t get_children();
   bool child_exists(char val);
   node2_t * get_child(char val);
