@@ -31,6 +31,40 @@ struct node_t{
   }
 };
 
+struct node2_t;
+struct node2_t{
+  // a parent is always present
+  node2_t * parent;
+  // we store things as an array of bytes because some fields are optional
+  // and we don't want to suffer memory bloat from struct padding.
+  // 
+  // data is a null terminated, tab delimited variable length array of 
+  // characters.  Tabs separate tokens. If a token is 0 length, 
+  // it is not defined.
+  // 
+  // token 0: pointer to its next sibling (0 or 8 bytes)
+  // tab delimiter (1 byte)
+  // token 1: pointer to its first child (0 or 8 bytes)
+  // tab delimiter (1 byte)
+  // token 2: is_leaf is a boolean (0 or 1 byte)
+  // tab delimiter (1 byte)
+  // token 3: val is a char (0 or 1 byte)
+  // tab delimiter (1 byte)
+  // token 4: tail is a null terminated string (strlen + 1 byte)
+  char * data;
+  node2_t(){
+    parent = NULL;
+    data = NULL;
+    ++node_count;
+    data = new char[5];
+    for(int i=0;i<4;++i) data[i] = '\t';
+    data[4] = '\0';
+  }
+  void set_parent(node2_t * node){
+    this->parent =  node;
+  }
+};
+
 typedef list<node_t *> node_list_t;
 typedef map<char,node_list_t> node_list_map_t;
 typedef map<char,node_list_map_t> node_list_map_map_t;
@@ -374,7 +408,8 @@ void find_in_file(string key,const char * dict_file){
 int main(int argc,char * argv[]){
   if(argc<2){
     cerr<<"Usage: "<<argv[0]<<" --algoritm <algorithm> --dict <dictionaryfile> --query <queryfile>\n";
-    //cerr<<"Size of node: "<<sizeof(node_t)<<endl;
+    node2_t n;
+    cerr<<"Size of node2: "<<sizeof(node2_t)<<" data is "<<strlen(n.data)<<endl;
     return 1;
   }
   parse_args(argc,argv);
