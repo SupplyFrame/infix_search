@@ -14,6 +14,11 @@ using namespace std;
 #include"node.hpp"
 #include"search.hpp"
 
+node_t * node_t::head;
+
+node_t * node_t::make_node(){
+  return new node_t();
+}
 node_list_t node_t::get_children(){
   node_list_t node_list;
   for(node_map_t::iterator it = child_map.begin();it!=child_map.end();it++){

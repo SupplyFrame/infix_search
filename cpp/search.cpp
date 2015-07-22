@@ -72,25 +72,10 @@ void search_t::run(bool simple){
 
 void search_t::add_to_lookup(char parent_val,node_t * child_node){
   bool debug_add = false;
-  if(nlmm.find(parent_val)!=nlmm.end()){
-    //nlm = nlmm[parent_val];
-    if(debug_add) cerr<<"Reusing nlm with key "<<parent_val<<endl;
-    if(nlmm[parent_val].find(child_node->get_val())!=nlmm[parent_val].end()){
-      nlmm[parent_val][child_node->get_val()].push_back(child_node);
-      if(debug_add) cerr<<"Reusing nl with key "<<child_node->get_val()<<endl;
-    }else{
-      node_list_t nl;
-      nl.push_back(child_node);
-      nlmm[parent_val][child_node->get_val()] = nl;
-    }
-  }else{
-    node_list_t nl;
-    nl.push_back(child_node);
-    node_list_map_t nlm;
-    nlm[child_node->get_val()] = nl;
-    nlmm[parent_val] = nlm;
-  }  
-  // now append to this list
+  string key="AA";
+  key[0] = parent_val;
+  key[1] = child_node->get_val();
+  nvm[key].push_back(child_node);
   if(debug_add) cerr<<"Connecting child node "<<child_node->get_val()<<" to "<<parent_val<<endl;
 }
 
@@ -99,7 +84,8 @@ void search_t::add(string word){
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
   if(head==NULL){
-    head = new node_t();
+    head = node_t::make_node();
+    //head = new node_t();
     head->set_val('*');
   }
   traverse = head;
@@ -133,7 +119,8 @@ void search_t::add(string word){
         // this loop builds a path up to before the mismatch
         for(int j=i_begin;j<i;++j){
           parent = traverse;
-          child = new node_t();
+          child = node_t::make_node();
+          //child = new node_t();
           child->set_val(word[j]);
           traverse->set_child(word[j],child);
           if(debug)cerr<<"Forging new path. Added a new child to "<<traverse<<" with key "<<word[j]<<endl;
@@ -152,7 +139,8 @@ void search_t::add(string word){
     }
     if (!traverse->child_exists(word[i])){
     //if (traverse->child_map.find(word[i])==traverse->child_map.end()){
-      child = new node_t();
+      child = node_t::make_node();
+      //child = new node_t();
       child->set_val(word[i]);
       if(word.length()>i+1) child->set_tail(word.substr(i+1));
       traverse->set_child(word[i],child);
@@ -297,24 +285,27 @@ bool search_t::find_path_util(node_t * node,string sub_key,node_t * start,string
 void search_t::find_path(string key){
   bool debug = false;
   int keylen = key.length();
-  if(nlmm.find(key[0])==nlmm.end()){
+  string key1="AA";
+  key1[0] = key[0];
+  key1[1] = key[1];
+  
+  if(nvm.find(key1)==nvm.end()){
     cerr<<"Cannot start a path!";
     return;
   }
   else{
-    //node_list_map_t nlm = nlmm[key[0]];
-    if (nlmm[key[0]].find(key[1])!=nlmm[key[0]].end()){
-      node_list_t nl = nlmm[key[0]][key[1]];
-      bool exact_match = false;
-      for(node_list_t::iterator it = nl.begin();it!=nl.end();it++){
-        node_t * cur = *it;
-        if(debug)cerr<<"Calling path util from start for pair "<<key[0]<<","<<key[1]<<"("<<cur<<")\n";
-        find_path_util(cur,key.substr(1),cur->get_parent(),key,exact_match);
-        if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
-        if(exact_match){
-          if(debug)cerr<<"Exact match found. Breaking early from lookup table search\n";
-           break;
-        }
+    node_vector_t nl = nvm[key1];
+    bool exact_match = false;
+    if(debug)cerr<<"Node list is of length: "<<nl.size()<<endl;
+    for(node_vector_t::iterator it = nl.begin();it!=nl.end();it++){
+    //for(node_list_t::iterator it = nl.begin();it!=nl.end();it++){
+      node_t * cur = *it;
+      if(debug)cerr<<"Calling path util from start for pair "<<key[0]<<","<<key[1]<<"("<<cur<<")\n";
+      find_path_util(cur,key.substr(1),cur->get_parent(),key,exact_match);
+      if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
+      if(exact_match){
+        if(debug)cerr<<"Exact match found. Breaking early from lookup table search\n";
+         break;
       }
     }
   }
@@ -356,22 +347,16 @@ void search_t::read_input(const char * dict_file){
 
 void search_t::print_lookup(){
   cerr<<"Debugging lookup table\n";
-  for(node_list_map_map_t::iterator it1 = nlmm.begin();
-  it1!=nlmm.end();it1++){
-    cerr<<"parent: "<<it1->first<<endl;
-    node_list_map_t nlm = it1->second;
-    for(node_list_map_t::iterator it2 = nlm.begin();
-    it2!=nlm.end();it2++){
-      cerr<<" child: "<<it2->first<<endl;
-      node_list_t nl = it2->second; 
-      for(node_list_t::iterator it3 = nl.begin();
-      it3!=nl.end();it3++){
-        cerr<<"  Address: "<<*it3<<endl;
-      }
+  for(node_vector_map_t::iterator it1 = nvm.begin();
+  it1!=nvm.end();it1++){
+    string key = it1->first;
+    node_vector_t vec = it1->second;
+    for(node_vector_t::iterator it3 = vec.begin();
+    it3!=vec.end();it3++){
+      cerr<<"  Address: "<<*it3<<endl;
     }
   }
 }
-
 
 
 void search_t::find_in_file(string key,const char * dict_file){

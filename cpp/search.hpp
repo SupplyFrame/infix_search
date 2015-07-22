@@ -1,13 +1,15 @@
 
-typedef map<char,node_list_t> node_list_map_t;
-typedef map<char,node_list_map_t> node_list_map_map_t;
+//typedef map<char,node_list_t> node_list_map_t;
+//typedef map<char,node_list_map_t> node_list_map_map_t;
+typedef map<string,node_vector_t> node_vector_map_t;
 
 class search_t{
 private:
   string algorithm,dict_file,query_file;
   node_t * head;
   node_t * traverse;
-  node_list_map_map_t nlmm;
+  //node_list_map_map_t nlmm;
+  node_vector_map_t nvm;
   void add_to_lookup(char parent_val,node_t * child_node);
   void add(string word);
   void traverse_up(node_t * node,stack<char> & up_stack);

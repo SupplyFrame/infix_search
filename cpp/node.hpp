@@ -1,5 +1,6 @@
 struct node_t;
 struct node2_t;
+typedef vector<node_t *> node_vector_t;
 typedef list<node_t *> node_list_t;
 typedef list<node2_t *> node2_list_t;
 typedef map<char,node_t *> node_map_t;
@@ -11,7 +12,11 @@ private:
   node_t * parent;
   string tail;
   node_map_t child_map;
+  static node_t ** node_t_arr;
+  static node_t * head;
+  node_t();
 public:
+  static node_t * make_node();
   node_list_t get_children();
   bool child_exists(char val);
   node_t * get_child(char val);
@@ -24,7 +29,6 @@ public:
   void set_tail(string tail);
   node_t * get_parent();
   void set_parent(node_t * parent);
-  node_t();
 };
 
 class node2_t{
