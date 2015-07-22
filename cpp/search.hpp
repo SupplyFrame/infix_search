@@ -5,6 +5,7 @@ typedef map<string,node_vector_t> node_vector_map_t;
 
 class search_t{
 private:
+  static const int node_type = node1_t::NODE_2;
   string algorithm,dict_file,query_file;
   node_t * head;
   node_t * traverse;

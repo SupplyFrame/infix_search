@@ -5,18 +5,42 @@ typedef list<node_t *> node_list_t;
 typedef list<node2_t *> node2_list_t;
 typedef map<char,node_t *> node_map_t;
 
+
 class node_t{
+public:
+  static const int NODE_1 = 0;
+  static const int NODE_2 = 1;
+  // factory method 
+  static node_t * make_node(int node_type);
+  virtual node_list_t get_children()=0;
+  virtual bool child_exists(char val)=0;
+  virtual node_t * get_child(char val)=0;
+  virtual void set_child(char val,node_t * node)=0;
+  virtual char get_val()=0;
+  virtual void set_val(char val)=0;
+  virtual bool get_is_leaf()=0;
+  virtual void set_is_leaf(bool is_leaf)=0;
+  virtual string get_tail()=0;
+  virtual void set_tail(string tail)=0;
+  virtual node_t * get_parent()=0;
+  virtual void set_parent(node_t * parent)=0;
+protected:
+  node_t();
+  virtual ~node_t();
+};
+
+class node1_t:public node_t{
 private:
   char val;
   bool is_leaf;
   node_t * parent;
   string tail;
   node_map_t child_map;
-  static node_t ** node_t_arr;
-  static node_t * head;
-  node_t();
+  static node1_t ** node1_t_arr;
+  static node1_t * head;
 public:
-  static node_t * make_node();
+  node1_t();
+  ~node1_t();
   node_list_t get_children();
   bool child_exists(char val);
   node_t * get_child(char val);
@@ -30,11 +54,21 @@ public:
   node_t * get_parent();
   void set_parent(node_t * parent);
 };
-
-class node2_t{
+class node2_t:public node_t{
 private:
-  // a parent is always present
-  node2_t * parent;
+  //static vector<node2_t*> node2_vec;
+  //static int current_node_index;
+  static const int METADATA_INDEX=0;
+  static const int CHARVAL_INDEX=1;
+  static const int TAIL_INDEX=2;
+  // bit indexes start from the right most position
+  static const int BIT_INDEX_IS_LEAF=0;
+  static const int BIT_INDEX_RESERVED=7;
+  //vector<node_t * > neighbors;
+  node_t ** neighbors;
+  int total_neighbors;
+  //string other_data;
+  char * data;
   // we store things as an array of bytes because some fields are optional
   // and we don't want to suffer memory bloat from struct padding.
   // 
@@ -52,8 +86,11 @@ private:
   // tab delimiter (1 byte)
   // token 4: tail is a null terminated string (strlen + 1 byte)
   // tab delimiter (1 byte)
-  char * data;
+  //char * data;
 public:
+  static node2_t * fetch_from_pool();
+  node2_t();
+  ~node2_t();
   // returns strlen
   int get_token(int token_id,char buf[]);
   void set_token(int token_id,char buf[]);
@@ -64,18 +101,16 @@ public:
   static const int TOKEN_TAIL = 4;
   static const char DELIM = '*';
   static const char EOL = '\0';
-  node2_list_t get_children();
+  node_list_t get_children();
   bool child_exists(char val);
-  node2_t * get_child(char val);
-  void set_child(char val,node2_t * node);
+  node_t * get_child(char val);
+  void set_child(char val,node_t * node);
   char get_val();
   void set_val(char val);
   bool get_is_leaf();
   void set_is_leaf(bool is_leaf);
   string get_tail();
   void set_tail(string tail);
-  node2_t * get_parent();
-  void set_parent(node2_t * parent);
-  node2_t();
+  node_t * get_parent();
+  void set_parent(node_t * parent);
 };
-

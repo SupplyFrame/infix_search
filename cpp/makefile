@@ -2,6 +2,8 @@
 CC=g++
 LINKER=g++
 OBJS=search.o node.o driver.o
+LINKFLAGS=-g
+CFLAGS=-g
 
 PROG=../bin/search
 

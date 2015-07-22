@@ -84,7 +84,7 @@ void search_t::add(string word){
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
   if(head==NULL){
-    head = node_t::make_node();
+    head = node_t::make_node(node_type);
     //head = new node_t();
     head->set_val('*');
   }
@@ -119,7 +119,7 @@ void search_t::add(string word){
         // this loop builds a path up to before the mismatch
         for(int j=i_begin;j<i;++j){
           parent = traverse;
-          child = node_t::make_node();
+          child = node_t::make_node(node_type);
           //child = new node_t();
           child->set_val(word[j]);
           traverse->set_child(word[j],child);
@@ -139,7 +139,7 @@ void search_t::add(string word){
     }
     if (!traverse->child_exists(word[i])){
     //if (traverse->child_map.find(word[i])==traverse->child_map.end()){
-      child = node_t::make_node();
+      child = node_t::make_node(node_type);
       //child = new node_t();
       child->set_val(word[i]);
       if(word.length()>i+1) child->set_tail(word.substr(i+1));

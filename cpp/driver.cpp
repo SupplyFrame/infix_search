@@ -7,6 +7,7 @@
 #include<vector>
 #include<string.h>
 #include<cstdlib>
+#include<vector>
 using namespace std;
 #include"node.hpp"
 #include"search.hpp"
@@ -20,10 +21,15 @@ int main(int argc,char * argv[]){
   if(argc<2){
     cerr<<"Usage: "<<argv[0]<<" --algoritm <algorithm> --dict <dictionaryfile> --query <queryfile>\n";
 		test_node();
+    cout<<"Size of string: "<<sizeof(string)<<endl;
+    cout<<"Size of vec: "<<sizeof(vector<node_t*>)<<endl;
+    cout<<"Size of node1: "<<sizeof(node1_t)<<endl;
+    cout<<"Size of node2: "<<sizeof(node2_t)<<endl;
     return 1;
   }
   search_t search(argc,argv);
   bool simple = false;
   search.run(simple);
+  while(true){}
   return 0;
 }
