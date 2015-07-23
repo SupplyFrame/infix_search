@@ -85,16 +85,17 @@ void search_t::add(string word){
   int len = word.length();
   if(head==NULL){
     head = node_t::make_node(node_type);
-    //head = new node_t();
     head->set_val('*');
+    head->set_tail(word);
   }
   traverse = head;
   node_t * previous = head;
+  bool single_char = false;
   int i=0;
   while(i<len){
-    node_t * child = NULL;
-    node_t * parent = traverse; 
     if(debug) cerr<<"Traverse is now at addr "<<traverse<<endl;
+    node_t * parent = traverse; 
+    node_t * child = NULL;
     if(traverse->get_tail().length()){
       int tail_index = 0;
       string traverse_tail = traverse->get_tail();
@@ -111,49 +112,78 @@ void search_t::add(string word){
         if(debug) cerr<<"Exact match to tail. Don't split.\n";
         break;
       }else{
-        if(debug) cerr<<"Not a match to tail. Mismatch is at tail_index "<<tail_index<<" and i "<<i<<".\n";
+        if(debug) cerr<<"Not a match to tail. Mismatch is at tail_index "<<tail_index<<" and i "<<i<<". Proposed tail for traverse is "<<traverse_tail.substr(0,tail_index)<<" and child tail is "<<traverse_tail.substr(tail_index)<<"\n";
         // clear out the tail of the parent
-        if(debug)cerr<<"Clearing out node tail with address "<<traverse<<endl;
-        traverse->set_tail("");
-        traverse->set_is_leaf(false);
-        // this loop builds a path up to before the mismatch
-        for(int j=i_begin;j<i;++j){
+        if(single_char){
+          traverse->set_tail("");
+          //traverse->set_tail(traverse_tail.substr(0,tail_index));
+          traverse->set_is_leaf(false);
+          // this loop builds a path up to before the mismatch
+          for(int j=i_begin;j<i;++j){
+            parent = traverse;
+            child = node_t::make_node(node_type);
+            //child = new node_t();
+            child->set_val(word[j]);
+            traverse->set_child(word[j],child);
+            if(debug)cerr<<"Forging new path. Added a new child to "<<traverse<<" with key "<<word[j]<<endl;
+            add_to_lookup(parent->get_val(),child); 
+            traverse = child;
+            //if(debug)cerr<<"traverse for "<<parent->get_val()<<" to "<<word[j]<<" has addr "<<traverse<<endl;
+            traverse->set_parent(parent);
+          }
+          //traverse = parent; // backtrack one
+          if(tail_index<traverse_tail.length())
+          traverse->set_tail(traverse_tail.substr(tail_index));
+          traverse->set_is_leaf(true);
+          //i = tail_index;
+          if(debug)cerr<<"After breaking up tail, at position "<<i<<" with suffix "<<traverse->get_tail()<<" into address "<<traverse<<endl;
+        }else{
+          // check if there is a child with a key of the current letter
           parent = traverse;
-          child = node_t::make_node(node_type);
-          //child = new node_t();
-          child->set_val(word[j]);
-          traverse->set_child(word[j],child);
-          if(debug)cerr<<"Forging new path. Added a new child to "<<traverse<<" with key "<<word[j]<<endl;
-          add_to_lookup(parent->get_val(),child); 
-          traverse = child;
-          //if(debug)cerr<<"traverse for "<<parent->get_val()<<" to "<<word[j]<<" has addr "<<traverse<<endl;
-          traverse->set_parent(parent);
+          if(traverse->get_child(word[i])!=NULL){
+            child = traverse->get_child(word[i]);
+            if(debug)cerr<<"Found a child to follow with key "<<child->get_val()<<endl;
+          }else{
+            if(debug)cerr<<"Forking two children"<<endl;
+            traverse->set_tail(traverse_tail.substr(0,tail_index));
+            traverse->set_is_leaf(false);
+            node_t * old_child = node_t::make_node(node_type);
+            old_child->set_val(traverse_tail[tail_index]);
+            old_child->set_tail(traverse_tail.substr(tail_index));
+            old_child->set_is_leaf(true);
+            if(debug)cerr<<"Old child "<<old_child<<" will be indexed with char "<<traverse_tail[tail_index]<<" with tail "<<old_child->get_tail()<<endl;
+            traverse->set_child(traverse_tail[tail_index],old_child);
+            child = node_t::make_node(node_type);
+            child->set_val(word[i]);
+            child->set_tail(word.substr(i));
+            child->set_is_leaf(true);
+            if(debug)cerr<<"New child "<<child<<" will be indexed with char "<<word[i]<<" with tail "<<child->get_tail()<<endl;
+            traverse->set_child(word[i],child);
+            //traverse = child;
+            //traverse->set_parent(parent);
+          }
         }
-        //traverse = parent; // backtrack one
-        if(tail_index<traverse_tail.length())
-        traverse->set_tail(traverse_tail.substr(tail_index));
-        traverse->set_is_leaf(true);
-        //i = tail_index;
-        if(debug)cerr<<"After breaking up tail, at position "<<i<<" with suffix "<<traverse->get_tail()<<" into address "<<traverse<<endl;
       }
     }
-    if (!traverse->child_exists(word[i])){
-    //if (traverse->child_map.find(word[i])==traverse->child_map.end()){
-      child = node_t::make_node(node_type);
-      //child = new node_t();
-      child->set_val(word[i]);
-      if(word.length()>i+1) child->set_tail(word.substr(i+1));
-      traverse->set_child(word[i],child);
-      if(debug)cerr<<"No child "<<child<<" with key "<<word[i]<<". Added a new child with key "<<word[i]<<" and suffix "<<child->get_tail()<<" into "<<traverse<<endl;
-      //GKC 2015-07-19
-      add_to_lookup(traverse->get_val(),child); 
-    }else{
-      child = traverse->get_child(word[i]); 
-      if(debug)cerr<<"Reusing child with key "<<word[i]<<" at "<<child<<endl;
+    if(single_char){
+      if (!traverse->child_exists(word[i])){
+      //if (traverse->child_map.find(word[i])==traverse->child_map.end()){
+        child = node_t::make_node(node_type);
+        //child = new node_t();
+        child->set_val(word[i]);
+        if(word.length()>i+1) child->set_tail(word.substr(i+1));
+        traverse->set_child(word[i],child);
+        if(debug)cerr<<"No child "<<child<<" with key "<<word[i]<<". Added a new child with key "<<word[i]<<" and suffix "<<child->get_tail()<<" into "<<traverse<<endl;
+        //GKC 2015-07-19
+        add_to_lookup(traverse->get_val(),child); 
+      }else{
+        child = traverse->get_child(word[i]); 
+        if(debug)cerr<<"Reusing child with key "<<word[i]<<" at "<<child<<endl;
+      }
+      ++i;
     }
     traverse = child;
     traverse->set_parent(parent);
-    ++i;
   }
   if(debug)cerr<<"Traverse is at child with addr "<<traverse<<endl;
   traverse->set_is_leaf(true);

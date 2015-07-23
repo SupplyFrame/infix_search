@@ -16,6 +16,7 @@ public:
   virtual bool child_exists(char val)=0;
   virtual node_t * get_child(char val)=0;
   virtual void set_child(char val,node_t * node)=0;
+  virtual bool is_indexed()=0;
   virtual char get_val()=0;
   virtual void set_val(char val)=0;
   virtual bool get_is_leaf()=0;
@@ -51,6 +52,7 @@ public:
   void set_is_leaf(bool is_leaf);
   string get_tail();
   void set_tail(string tail);
+  bool is_indexed();
   node_t * get_parent();
   void set_parent(node_t * parent);
 };
@@ -104,6 +106,7 @@ public:
   node_list_t get_children();
   bool child_exists(char val);
   node_t * get_child(char val);
+  bool is_indexed();
   void set_child(char val,node_t * node);
   char get_val();
   void set_val(char val);

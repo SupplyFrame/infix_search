@@ -56,6 +56,10 @@ void node1_t::set_child(char val,node_t * node){
   child_map[val] = node;
 }
 
+bool node1_t::is_indexed(){
+  return false;
+}
+
 char node1_t::get_val(){
   return val;
 }
@@ -103,7 +107,7 @@ node2_t::node2_t(){
   // most nodes only have two neighbors. parent and one child.
   // convention is 0th element is parent. 1th onward are children.
   total_neighbors = 2;
-  neighbors = new node_t *[total_neighbors];
+  neighbors = (node_t**)malloc(total_neighbors*sizeof(node_t*));
   for(int i=0;i<total_neighbors;++i){
     neighbors[i] = NULL;
   }
@@ -112,7 +116,7 @@ node2_t::node2_t(){
   // 1st byte is the node character value
   // 2nd byte is the null character as it will not have a tail
   // if a tail is needed, then realloc this array
-  data = new char[3];
+  data = (char*)malloc(3);
   data[METADATA_INDEX] =  (1 << BIT_INDEX_RESERVED);
   data[CHARVAL_INDEX] = '*';
   data[TAIL_INDEX] = EOL;
@@ -216,7 +220,7 @@ void node2_t::set_tail(string tail){
 }
 
 node_t * node2_t::get_child(char val){
-  node_t * node;
+  node_t * node=NULL;
   int i=1;
   bool found =false;
   while(i<total_neighbors && !found){
@@ -227,6 +231,10 @@ node_t * node2_t::get_child(char val){
     ++i;
   }
   return node;
+}
+
+bool node2_t::is_indexed(){
+  return false;
 }
 
 node_t * node2_t::get_parent(){
@@ -316,7 +324,7 @@ void node2_t::set_token(int token_id,char buf[]){
   int new_size = data_len+input_len+1;
   strcpy(old_data,data);
   delete[]data;
-  data = new char[new_size];
+  data = (char*)malloc(new_size);
   int data_index=0;
   int new_index = 0;
   int buf_index = 0;

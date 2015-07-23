@@ -30,6 +30,5 @@ int main(int argc,char * argv[]){
   search_t search(argc,argv);
   bool simple = false;
   search.run(simple);
-  while(true){}
   return 0;
 }
