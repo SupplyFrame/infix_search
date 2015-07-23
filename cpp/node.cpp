@@ -43,6 +43,10 @@ node_list_t node1_t::get_children(){
   return node_list;
 }
 
+void node1_t::kill_children(){
+  child_map.clear();
+}
+
 bool node1_t::child_exists(char val){
   return child_map.find(val)!=child_map.end(); 
 }
@@ -137,6 +141,7 @@ node_list_t node2_t::get_children(){
   }
   return nl;
 }
+
 bool node2_t::child_exists(char val){
   bool found = false;
   int i=1;
@@ -175,6 +180,20 @@ void node2_t::set_child(char val,node_t * node){
     }
     neighbors[total_neighbors-1] = node;
   }
+}
+
+void node2_t::kill_children(){
+  total_neighbors = 2;
+  node_t ** status = NULL;
+  status = (node_t **)realloc(neighbors,total_neighbors*sizeof(node_t *));
+  if(status!=NULL){
+    //cerr<<" expanded the size of neighbors array\n";
+    neighbors = status;
+  }else{
+    cerr<<"Problem shrinking neighbors array in kill_children\n";
+    exit(1);
+  }
+  neighbors[total_neighbors-1] = NULL;
 }
 
 char node2_t::get_val(){

@@ -12,6 +12,7 @@ public:
   static const int NODE_2 = 1;
   // factory method 
   static node_t * make_node(int node_type);
+  virtual void kill_children()=0;
   virtual node_list_t get_children()=0;
   virtual bool child_exists(char val)=0;
   virtual node_t * get_child(char val)=0;
@@ -43,6 +44,7 @@ public:
   node1_t();
   ~node1_t();
   node_list_t get_children();
+  void kill_children();
   bool child_exists(char val);
   node_t * get_child(char val);
   void set_child(char val,node_t * node);
@@ -104,6 +106,7 @@ public:
   static const char DELIM = '*';
   static const char EOL = '\0';
   node_list_t get_children();
+  void kill_children();
   bool child_exists(char val);
   node_t * get_child(char val);
   bool is_indexed();
