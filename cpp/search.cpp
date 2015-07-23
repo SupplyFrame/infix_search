@@ -80,13 +80,14 @@ void search_t::add_to_lookup(char parent_val,node_t * child_node){
 }
 
 void search_t::add(string word){
-  bool debug = true;
+  bool debug = false;
+  word = "*"+word;
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
   if(head==NULL){
     head = node_t::make_node(node_type);
     head->set_val('*');
-    head->set_tail(word);
+    head->set_tail("*");
   }
   traverse = head;
   node_t * previous = head;
@@ -96,7 +97,7 @@ void search_t::add(string word){
     if(debug) cerr<<"Traverse is now at addr "<<traverse<<endl;
     node_t * parent = traverse; 
     node_t * child = NULL;
-    if(traverse->get_tail().length()){
+    if(traverse->get_tail().length()!=0){
       int tail_index = 0;
       string traverse_tail = traverse->get_tail();
       if(debug)cerr<<"Traverse tail exists and is "<<traverse_tail<<". Comparing remainder of word to tail. "<<endl;
@@ -144,37 +145,41 @@ void search_t::add(string word){
             child = traverse->get_child(word[i]);
             if(debug)cerr<<"Found a child to follow with key "<<child->get_val()<<endl;
           }else{
-            if(debug)cerr<<"Forking two children"<<endl;
-            traverse->set_tail(traverse_tail.substr(0,tail_index));
-            node_t * old_fork = node_t::make_node(node_type);
-            // copy this node's leaf status to the child
-            old_fork->set_is_leaf(traverse->get_is_leaf());
-            // copy this node's substring over
-            old_fork->set_val(traverse_tail[tail_index]);
-            old_fork->set_tail(traverse_tail.substr(tail_index));
-            // move this node's children to old_fork
-            node_list_t nl = traverse->get_children();
-            if(nl.size()){
-              if(debug) cerr<<"There are children to move\n";
-              for(node_list_t::iterator it = nl.begin();it!=nl.end();it++){
-                node_t * grandchild = *it; 
-                if(debug)cerr<<"Setting child "<<grandchild->get_val()<<" with tail "<<grandchild->get_tail()<<endl;
-                old_fork->set_child(grandchild->get_val(),grandchild);
+            if(tail_index<traverse_tail.length()){
+              if(debug)cerr<<"Forking two children"<<endl;
+              traverse->set_tail(traverse_tail.substr(0,tail_index));
+              node_t * old_fork = node_t::make_node(node_type);
+              // copy this node's leaf status to the child
+              old_fork->set_is_leaf(traverse->get_is_leaf());
+              // copy this node's substring over
+              old_fork->set_val(traverse_tail[tail_index]);
+              old_fork->set_tail(traverse_tail.substr(tail_index));
+              // move this node's children to old_fork
+              node_list_t nl = traverse->get_children();
+              if(nl.size()){
+                if(debug) cerr<<"There are children to move\n";
+                for(node_list_t::iterator it = nl.begin();it!=nl.end();it++){
+                  node_t * grandchild = *it; 
+                  if(debug)cerr<<"Setting child "<<grandchild->get_val()<<" with tail "<<grandchild->get_tail()<<endl;
+                  old_fork->set_child(grandchild->get_val(),grandchild);
+                }
+                traverse->kill_children();
               }
-              traverse->kill_children();
+              if(debug)cerr<<"Old fork "<<old_fork<<" will be indexed with char "<<traverse_tail[tail_index]<<" with tail "<<old_fork->get_tail()<<endl;
+              // this node was forked so cannot be a leaf.
+              traverse->set_is_leaf(false);
+              // add the old fork to the current node
+              traverse->set_child(traverse_tail[tail_index],old_fork);
+            }else{
+              if(debug)cerr<<"Forking only one child\n";
             }
-            if(debug)cerr<<"Old fork"<<old_fork<<" will be indexed with char "<<traverse_tail[tail_index]<<" with tail "<<old_fork->get_tail()<<endl;
-            // this node was forked so cannot be a leaf.
-            traverse->set_is_leaf(false);
-            // add the old fork to the current node
-            traverse->set_child(traverse_tail[tail_index],old_fork);
             // create a new fork the collects remainder of the key
             child = node_t::make_node(node_type);
             child->set_val(word[i]);
             child->set_tail(word.substr(i));
             // the new fork collects the remainder of the key so is a leaf
             child->set_is_leaf(true);
-            if(debug)cerr<<"New fork "<<child<<" will be indexed with char "<<word[i]<<" with tail "<<child->get_tail()<<endl;
+            if(debug)cerr<<"New fork 2 "<<child<<" will be indexed with char "<<word[i]<<" with tail "<<child->get_tail()<<endl;
             // add the new fork to the current node
             traverse->set_child(word[i],child);
           }
