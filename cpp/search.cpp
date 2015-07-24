@@ -11,7 +11,6 @@ using namespace std;
 #include"node.hpp"
 #include"search.hpp"
 
-
 int search_t::node_count;
 search_t::search_t(int argc,char * argv[]){
   head=NULL;
@@ -117,28 +116,6 @@ void search_t::add(string word){
         if(debug) cerr<<"Not a match to tail. Mismatch is at tail_index "<<tail_index<<" and i "<<i<<". Proposed tail for traverse is "<<traverse_tail.substr(0,tail_index)<<" and child tail is "<<traverse_tail.substr(tail_index)<<"\n";
         // clear out the tail of the parent
         if(single_char){
-          traverse->set_tail("");
-          //traverse->set_tail(traverse_tail.substr(0,tail_index));
-          traverse->set_is_leaf(false);
-          // this loop builds a path up to before the mismatch
-          for(int j=i_begin;j<i;++j){
-            parent = traverse;
-            child = node_t::make_node(node_type);
-            //child = new node_t();
-            child->set_val(word[j]);
-            traverse->set_child(word[j],child);
-            if(debug)cerr<<"Forging new path. Added a new child to "<<traverse<<" with key "<<word[j]<<endl;
-            add_to_lookup(parent->get_val(),child); 
-            traverse = child;
-            //if(debug)cerr<<"traverse for "<<parent->get_val()<<" to "<<word[j]<<" has addr "<<traverse<<endl;
-            traverse->set_parent(parent);
-          }
-          //traverse = parent; // backtrack one
-          if(tail_index<traverse_tail.length())
-          traverse->set_tail(traverse_tail.substr(tail_index));
-          traverse->set_is_leaf(true);
-          //i = tail_index;
-          if(debug)cerr<<"After breaking up tail, at position "<<i<<" with suffix "<<traverse->get_tail()<<" into address "<<traverse<<endl;
         }else{
           // check if there is a child with a key of the current letter
           parent = traverse;
@@ -169,6 +146,7 @@ void search_t::add(string word){
               if(debug)cerr<<"Old fork "<<old_fork<<" will be indexed with char "<<traverse_tail[tail_index]<<" with tail "<<old_fork->get_tail()<<endl;
               // this node was forked so cannot be a leaf.
               traverse->set_is_leaf(false);
+              if(debug)cerr<<"Leaf status "<<traverse->get_is_leaf()<<endl;
               // add the old fork to the current node
               traverse->set_child(traverse_tail[tail_index],old_fork);
             }else{
@@ -211,15 +189,24 @@ void search_t::add(string word){
   traverse->set_is_leaf(true);
 }
 
-void search_t::traverse_up(node_t * node,stack<char> & up_stack){
+void search_t::traverse_up(tree_pos_val_t tpv,stack<char> & up_stack){
+  node_t * node = tpv.first;
+  int charindex = tpv.second;
   if(node==head) return;
   else{
-    up_stack.push(node->get_val());
-    traverse_up(node->get_parent(),up_stack);
+    int i=charindex;
+    string tail = node->get_tail();
+    while(i>=0){
+      up_stack.push(tail[i]);
+      --i;
+    }
+    tpv.first = node->get_parent();
+    tpv.second = tpv.first->get_tail().length()-1;
+    traverse_up(tpv,up_stack);
   }
 }
 
-void search_t::traverse_down_util(node_t * node, char path[],int pathLen,list<string> & suffixes){
+void search_t::traverse_down_util(node_t * node,int tailindex, char path[],int pathLen,list<string> & suffixes){
   bool debug = false;
   path[pathLen] = node->get_val();
   if(debug ) cerr<<"parent-node at index "<<pathLen<<" is "<<node->get_parent()->get_val()<<node->get_val()<<" with address "<<node<<" and tail "<<node->get_tail()<<endl;
@@ -239,7 +226,7 @@ void search_t::traverse_down_util(node_t * node, char path[],int pathLen,list<st
   //for(node_map_t::iterator it = node->child_map.begin();it!=node->child_map.end();it++){
     node_t * node = *it;
     //++pathLen;
-    traverse_down_util(node,path,pathLen,suffixes);
+    traverse_down_util(node,tailindex,path,pathLen,suffixes);
   } 
 }
 
@@ -247,17 +234,18 @@ void search_t::traverse_down(node_t * node,list<string> & suffixes,string orig_k
   char path[100];
   int key_len = orig_key.length();
   for(int i=0;i<key_len;++i) path[i] = orig_key[i];
-  traverse_down_util(node,path,key_len-1,suffixes);
+  //traverse_down_util(node,path,key_len-1,suffixes);
 }
 
 
-bool search_t::find_path_util(node_t * node,string sub_key,node_t * start,string orig_key,bool & exact_match){
-  bool debug = false;
+bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_pos_val_t start,string orig_key,bool & exact_match){
+  bool debug = true;
   //if(debug)cerr<<"Substring is "<<sub_key<<" start,end is "<<start->get_val()<<","<<node->get_val()<<endl;
   if(sub_key.length()<2 || node==NULL){
-    if(debug)cerr<<"Found!\n";  
+    if(debug)cerr<<"Found with less than two characters!\n";  
     stack<char> up_stack;
-    traverse_up(start->get_parent(),up_stack);
+    --start.second;
+    traverse_up(start,up_stack);
     char buf[100];
     int p=0;
     while(!up_stack.empty()){
@@ -272,7 +260,10 @@ bool search_t::find_path_util(node_t * node,string sub_key,node_t * start,string
     if(debug)cerr<<"PREFIX: "<<prefix<<endl;
     list<string> suffixes;
     if(node!=NULL){
-      traverse_down(node,suffixes,orig_key);
+      char path[100];
+      int key_len = orig_key.length();
+      for(int i=0;i<key_len;++i) path[i] = orig_key[i];
+      traverse_down_util(node,tailindex,path,key_len,suffixes);
     }else{ 
       // case where tail was the suffix. Add to suffixes list
       ostringstream oss;
@@ -293,71 +284,71 @@ bool search_t::find_path_util(node_t * node,string sub_key,node_t * start,string
     }
     return true;
   }
-  if (node->get_val()==sub_key[0] && node->child_exists(sub_key[1])){
-  //if (node->get_val()==sub_key[0] && node->child_map.find(sub_key[1])!=node->child_map.end()){
-    if(debug)cerr<<"Found a match from "<<sub_key[0]<<" to "<<sub_key[1]<<" recursing on shorter str "<<sub_key.substr(1)<<" on node "<<node->get_child(sub_key[1]) <<endl;
-    exact_match = false;
-    find_path_util(node->get_child(sub_key[1]),sub_key.substr(1),start,orig_key,exact_match);
-    //}else{
-     // for(node_map_t::iterator it=node->child_map.begin();it!=node->child_map.end();it++){
-      //  if(debug)cerr<<" not found children from "<<node->get_val()<<" are "<<it->first<<endl;
-      //}
-    //}
-  }else{
-    // check if remainder of sub_key is a prefix of the tail
-    string remain = sub_key.substr(1);
-    int i=0,j=0;
-    while(i<remain.length() && j<node->get_tail().length()){
-      if (remain[i]!=node->get_tail()[j]) break;
-      ++i;++j;
-    }
-    if(i==remain.length()){
-      if(debug)cerr<<"Subkey is a prefix of tail, accepting match. Node addr is "<<node<<"\n";
-      if(debug)cerr<<"Found a match between tail "<<node->get_tail()<<" and "<<sub_key.substr(1)<<endl;
-      exact_match = false;
-      string newstr="";
-      if(i==node->get_tail().length()){
-        if(debug)cerr<<"Exact match found. Calling find_path_util on null string\n";
-        exact_match = true;
-        //find_path_util(NULL,"",start,orig_key);
-      }else{
-        newstr=node->get_tail().substr(i);
-        if(debug)cerr<<"Calling find_path_util on string "<<node->get_tail().substr(i)<<"\n";
-        //find_path_util(NULL,node->get_tail().substr(i),start,orig_key);
-      }
-      find_path_util(NULL,newstr,start,orig_key,exact_match);
+  string node_tail = node->get_tail();
+  int node_tail_len = node_tail.length();
+  int key_len = sub_key.length();
+  int keyindex = 0;
+  // advance the index for both the tail and the key while there are matches
+  while(tailindex<node_tail_len && keyindex<key_len 
+  && node_tail[tailindex]==sub_key[keyindex]){
+    if(debug)cerr<<"Comparing tail "<<node_tail[tailindex]<<" to key "<<sub_key[keyindex]<<endl;
+    ++tailindex;
+    ++keyindex;
+  }
+  if(debug) cerr<<"Tail and key index are "<<tailindex<<","<<keyindex<<endl;
+  if(keyindex==key_len){
+    exact_match = node->get_is_leaf();
+    if(exact_match){
+      if(debug)cerr<<"Exact match is found!\n";
+      find_path_util(NULL,tailindex,"",start,orig_key,exact_match);
     }else{
-      //if(debug)cerr<<"Not matched with sub key of "<<sub_key<<"\n";
+      if(debug)cerr<<"Suffixes remain!\n";
+      find_path_util(node,tailindex,"",start,orig_key,exact_match);
+    }
+  }else{
+    if(tailindex<node_tail_len){
+      if(debug)cerr<<"Match could not be found at all between key "<<sub_key<<" and tail "<<node_tail<<" Returning false!\n";
       return false;
+    }else{
+      string newstr=sub_key.substr(keyindex);
+      if(debug)cerr<<"Match could not be found so far between key "<<sub_key<<" and tail "<<node_tail<<" Try to recurse on subkey "<<newstr<<"!\n";
+      node_t * child = node->get_child(newstr[0]);
+      if(child==NULL){
+        if(debug) cerr<<"No child with value "<<newstr[0]<<". Aborting search\n";
+        return false;
+      }else{
+        if(debug)cerr<<" Recursing on subkey "<<newstr<<"!\n";
+        find_path_util(child,0,newstr,start,orig_key,exact_match);
+      }
     }
   }
   return false;
 }
 
 void search_t::find_path(string key){
-  bool debug = false;
+  bool debug = true;
   int keylen = key.length();
-  string key1="AA";
-  key1[0] = key[0];
-  key1[1] = key[1];
-  
-  if(nvm.find(key1)==nvm.end()){
-    cerr<<"Cannot start a path!";
+  tree_pos_key_t tp_key;
+  tp_key.first = key[0];
+  tp_key.second = key[1];
+  if(tpm.find(tp_key)==tpm.end()){
+    cerr<<"Cannot start a path with key "<<key[0]<<" and "<<key[1]<<"!";
     return;
   }
   else{
-    node_vector_t nl = nvm[key1];
+    tree_pos_val_vector_t nl = tpm[tp_key];
     bool exact_match = false;
-    if(debug)cerr<<"Node list is of length: "<<nl.size()<<endl;
-    for(node_vector_t::iterator it = nl.begin();it!=nl.end();it++){
-    //for(node_list_t::iterator it = nl.begin();it!=nl.end();it++){
-      node_t * cur = *it;
-      if(debug)cerr<<"Calling path util from start for pair "<<key[0]<<","<<key[1]<<"("<<cur<<")\n";
-      find_path_util(cur,key.substr(1),cur->get_parent(),key,exact_match);
-      if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
+    if(debug)cerr<<"Node vector is of length: "<<nl.size()<<endl;
+    for(tree_pos_val_vector_t::iterator it = nl.begin();it!=nl.end();it++){
+      tree_pos_val_t tpv = *it;
+      node_t * cur = tpv.first;
+      int tailindex = (int)tpv.second;
+      if(debug)cerr<<"Calling path util from start for pair "<<tp_key.first<<","<<tp_key.second<<"("<<cur<<","<<tailindex<<")\n";
+      find_path_util(cur,tailindex,key.substr(0),tpv,key,exact_match);
+      //if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
       if(exact_match){
         if(debug)cerr<<"Exact match found. Breaking early from lookup table search\n";
-         break;
+        break;
       }
     }
   }
@@ -370,19 +361,23 @@ void search_t::index_trie(node_t * current,node_t * parent){
   if(debug)cerr<<"INDEX_TRIE:current node is tail "<<tail<<endl;
   if(parent!=NULL ){
     for(int i=0;i<tail_len;++i){
+      tree_pos_key_t tp_key;
       char key[3];
       key[2] = '\0';
       if(i==0){
         string parent_tail = parent->get_tail();
         int parent_tail_len = parent_tail.length();
-        key[0] = parent_tail[parent_tail_len-1];
+        tp_key.first = parent_tail[parent_tail_len-1];
       }else{
-        key[0] = tail[i-1];
+        tp_key.first = tail[i-1];
       }
-      key[1] = tail[i];
-      cerr<<"Pair to add is "<<key<<":"<<i-1<<","<<i<<endl;
-      tree_pos_t tp = tree_pos_t(current,i-1);
-      tpm[key] = tp;
+      tp_key.second = tail[i];
+      tree_pos_val_t tp_val;
+      tp_val.first = current;
+      tp_val.second = i-1;
+      if(debug)cerr<<"INDEX_TRIE:Pair to add is "<<tp_key.first<<","<<tp_key.second<<":"<<tp_val.first<<","<<tp_val.second<<"("<<(int)tp_val.second<<")"<<endl;
+      //tree_pos_t tp = tree_pos_t(current,i-1);
+      tpm[tp_key].push_back(tp_val);
     }
   }
   node_list_t nl = current->get_children();
@@ -391,7 +386,7 @@ void search_t::index_trie(node_t * current,node_t * parent){
     if(debug)cerr<<"INDEX_TRIE:recursing on descendant\n";
     index_trie(curr,current);
   }
-  cerr<<"INDEX_TRIE:current node with tail "<<tail<<" is indexed now\n";
+  if(debug)cerr<<"INDEX_TRIE:current node with tail "<<tail<<" is indexed now with leaf status "<<current->get_is_leaf()<<"\n";
   current->set_is_indexed(true);
   return;
 }

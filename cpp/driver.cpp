@@ -22,7 +22,8 @@ int main(int argc,char * argv[]){
     cerr<<"Usage: "<<argv[0]<<" --algoritm <algorithm> --dict <dictionaryfile> --query <queryfile>\n";
 		test_node();
     cout<<"Size of string: "<<sizeof(string)<<endl;
-    cout<<"Size of vec: "<<sizeof(vector<node_t*>)<<endl;
+    cout<<"Size of tp key: "<<sizeof(tree_pos_key_t)<<endl;
+    cout<<"Size of tp val: "<<sizeof(tree_pos_val_t)<<endl;
     cout<<"Size of node1: "<<sizeof(node1_t)<<endl;
     cout<<"Size of node2: "<<sizeof(node2_t)<<endl;
     return 1;
