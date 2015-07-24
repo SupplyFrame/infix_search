@@ -1,7 +1,7 @@
-
-//typedef map<char,node_list_t> node_list_map_t;
-//typedef map<char,node_list_map_t> node_list_map_map_t;
+typedef pair<node_t*,char> tree_pos_t;
+typedef vector<node_t *> node_vector_t;
 typedef map<string,node_vector_t> node_vector_map_t;
+typedef map<const char *,tree_pos_t> tree_pos_map_t;
 
 class search_t{
 private:
@@ -11,6 +11,9 @@ private:
   node_t * traverse;
   //node_list_map_map_t nlmm;
   node_vector_map_t nvm;
+  tree_pos_map_t tpm;
+  // recursive function to index the trie
+  void index_trie(node_t * current,node_t * parent);
   void add_to_lookup(char parent_val,node_t * child_node);
   void add(string word);
   void traverse_up(node_t * node,stack<char> & up_stack);

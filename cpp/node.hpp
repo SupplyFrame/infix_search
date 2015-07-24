@@ -1,8 +1,7 @@
 struct node_t;
 struct node2_t;
-typedef vector<node_t *> node_vector_t;
+
 typedef list<node_t *> node_list_t;
-typedef list<node2_t *> node2_list_t;
 typedef map<char,node_t *> node_map_t;
 
 
@@ -17,7 +16,8 @@ public:
   virtual bool child_exists(char val)=0;
   virtual node_t * get_child(char val)=0;
   virtual void set_child(char val,node_t * node)=0;
-  virtual bool is_indexed()=0;
+  virtual bool get_is_indexed()=0;
+  virtual void set_is_indexed(bool is_indexed)=0;
   virtual char get_val()=0;
   virtual void set_val(char val)=0;
   virtual bool get_is_leaf()=0;
@@ -35,6 +35,7 @@ class node1_t:public node_t{
 private:
   char val;
   bool is_leaf;
+  bool is_indexed;
   node_t * parent;
   string tail;
   node_map_t child_map;
@@ -54,7 +55,8 @@ public:
   void set_is_leaf(bool is_leaf);
   string get_tail();
   void set_tail(string tail);
-  bool is_indexed();
+  bool get_is_indexed();
+  void set_is_indexed(bool is_indexed);
   node_t * get_parent();
   void set_parent(node_t * parent);
 };
@@ -63,14 +65,15 @@ private:
   //static vector<node2_t*> node2_vec;
   //static int current_node_index;
   static const int METADATA_INDEX=0;
-  static const int CHARVAL_INDEX=1;
+  static const int TOTAL_NEIGHBORS_INDEX=1;
   static const int TAIL_INDEX=2;
   // bit indexes start from the right most position
   static const int BIT_INDEX_IS_LEAF=0;
+  static const int BIT_INDEX_IS_INDEXED=1;
   static const int BIT_INDEX_RESERVED=7;
   //vector<node_t * > neighbors;
   node_t ** neighbors;
-  int total_neighbors;
+  //int total_neighbors;
   //string other_data;
   char * data;
   // we store things as an array of bytes because some fields are optional
@@ -109,7 +112,8 @@ public:
   void kill_children();
   bool child_exists(char val);
   node_t * get_child(char val);
-  bool is_indexed();
+  bool get_is_indexed();
+  void set_is_indexed(bool is_indexed);
   void set_child(char val,node_t * node);
   char get_val();
   void set_val(char val);

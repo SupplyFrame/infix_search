@@ -50,6 +50,7 @@ void search_t::run(bool simple){
       //string keys[]={"DCRK","DCRK500","##BP","DNA"};
       vector<string> keys;
       read_query(query_file.data(),keys);
+      index_trie(head,NULL);
       double start = clock();
       for(int i=0;i<keys.size();++i){
         cout<<"Result for key "<<keys[i]<<":"<<endl;
@@ -80,7 +81,7 @@ void search_t::add_to_lookup(char parent_val,node_t * child_node){
 }
 
 void search_t::add(string word){
-  bool debug = false;
+  bool debug = true;
   word = "*"+word;
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
@@ -361,6 +362,40 @@ void search_t::find_path(string key){
     }
   }
 }
+
+void search_t::index_trie(node_t * current,node_t * parent){
+  bool debug = true;
+  string tail = current->get_tail();
+  int tail_len = tail.length();
+  if(debug)cerr<<"INDEX_TRIE:current node is tail "<<tail<<endl;
+  if(parent!=NULL ){
+    for(int i=0;i<tail_len;++i){
+      char key[3];
+      key[2] = '\0';
+      if(i==0){
+        string parent_tail = parent->get_tail();
+        int parent_tail_len = parent_tail.length();
+        key[0] = parent_tail[parent_tail_len-1];
+      }else{
+        key[0] = tail[i-1];
+      }
+      key[1] = tail[i];
+      cerr<<"Pair to add is "<<key<<":"<<i-1<<","<<i<<endl;
+      tree_pos_t tp = tree_pos_t(current,i-1);
+      tpm[key] = tp;
+    }
+  }
+  node_list_t nl = current->get_children();
+  for(node_list_t::iterator it = nl.begin();it!=nl.end();++it){
+    node_t * curr = *it;
+    if(debug)cerr<<"INDEX_TRIE:recursing on descendant\n";
+    index_trie(curr,current);
+  }
+  cerr<<"INDEX_TRIE:current node with tail "<<tail<<" is indexed now\n";
+  current->set_is_indexed(true);
+  return;
+}
+
 
 
 void search_t::read_query(const char * query_file,vector<string> & keys){

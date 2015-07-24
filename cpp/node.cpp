@@ -60,9 +60,6 @@ void node1_t::set_child(char val,node_t * node){
   child_map[val] = node;
 }
 
-bool node1_t::is_indexed(){
-  return false;
-}
 
 char node1_t::get_val(){
   return val;
@@ -72,8 +69,17 @@ void node1_t::set_val(char val){
   this->val = val;
 }
 
+
+bool node1_t::get_is_indexed(){
+  return is_indexed;
+}
+
 bool node1_t::get_is_leaf(){
   return is_leaf;
+}
+
+void node1_t::set_is_indexed(bool is_indexed){
+  this->is_indexed = is_indexed;
 }
 
 void node1_t::set_is_leaf(bool is_leaf){
@@ -101,6 +107,7 @@ node1_t::node1_t(){
   parent = NULL;
   tail="";
   is_leaf = false;
+  is_indexed = false;
   ++search_t::node_count;
 }
 
@@ -108,13 +115,6 @@ node1_t::~node1_t(){
 }
 
 node2_t::node2_t(){
-  // most nodes only have two neighbors. parent and one child.
-  // convention is 0th element is parent. 1th onward are children.
-  total_neighbors = 2;
-  neighbors = (node_t**)malloc(total_neighbors*sizeof(node_t*));
-  for(int i=0;i<total_neighbors;++i){
-    neighbors[i] = NULL;
-  }
   // most nodes will only need three bytes of information
   // 0th byte is meta data, which we can extract by bit shifting
   // 1st byte is the node character value
@@ -122,10 +122,19 @@ node2_t::node2_t(){
   // if a tail is needed, then realloc this array
   data = (char*)malloc(3);
   data[METADATA_INDEX] =  (1 << BIT_INDEX_RESERVED);
-  data[CHARVAL_INDEX] = '*';
+  //data[CHARVAL_INDEX] = '*';
   data[TAIL_INDEX] = EOL;
   if(data[TAIL_INDEX]==data[METADATA_INDEX]) cerr<<"Equal!\n";
+  // most nodes only have two neighbors. parent and one child.
+  // convention is 0th element is parent. 1th onward are children.
+  int total_neighbors = data[TOTAL_NEIGHBORS_INDEX] = 2;
+  neighbors = (node_t**)malloc(total_neighbors*sizeof(node_t*));
+  for(int i=0;i<total_neighbors;++i){
+    neighbors[i] = NULL;
+  }
   //cerr<<"Constructed a node2 data len is "<<strlen(data)<<"\n";
+  set_is_leaf(false);
+  set_is_indexed(false);
   ++search_t::node_count;
 }
 
@@ -136,7 +145,7 @@ node2_t::~node2_t(){
 
 node_list_t node2_t::get_children(){
   node_list_t nl;
-  for(int i=1;i<total_neighbors;++i){
+  for(int i=1;i<data[TOTAL_NEIGHBORS_INDEX];++i){
     if(neighbors[i]!=NULL) nl.push_back(neighbors[i]);
   }
   return nl;
@@ -145,7 +154,7 @@ node_list_t node2_t::get_children(){
 bool node2_t::child_exists(char val){
   bool found = false;
   int i=1;
-  while(i<total_neighbors && !found){
+  while(i<data[TOTAL_NEIGHBORS_INDEX] && !found){
     if(neighbors[i]!=NULL && neighbors[i]->get_val()==val) found = true;
     ++i;
   }
@@ -155,22 +164,22 @@ bool node2_t::child_exists(char val){
 void node2_t::set_child(char val,node_t * node){
   bool found = false;
   int i=1;
-  while(i<total_neighbors && !found){
+  while(i<data[TOTAL_NEIGHBORS_INDEX] && !found){
     if(neighbors[i]==NULL){
       found = true;
       neighbors[i] = node;
       //cerr<<" using existing neighbor slot at "<<i<<endl;
     }else if(neighbors[i]->get_val()==val){
-      cerr<<" duplicate child, ignoring set request\n";
+      cerr<<" duplicate child with tail "<<neighbors[i]->get_tail()<<" and node has tail "<<node->get_tail()<<", ignoring set request\n";
       return;
     }
     ++i;
   }
   if(!found){
-    ++total_neighbors;
+    ++data[TOTAL_NEIGHBORS_INDEX];
     node_t ** status = NULL;
     //cerr<<" need to expand the size of neighbors array\n";
-    status = (node_t **)realloc(neighbors,total_neighbors*sizeof(node_t *));
+    status = (node_t **)realloc(neighbors,data[TOTAL_NEIGHBORS_INDEX]*sizeof(node_t *));
     if(status!=NULL){
       //cerr<<" expanded the size of neighbors array\n";
       neighbors = status;
@@ -178,14 +187,14 @@ void node2_t::set_child(char val,node_t * node){
       cerr<<"Problem expanding neighbors array\n";
       exit(1);
     }
-    neighbors[total_neighbors-1] = node;
+    neighbors[data[TOTAL_NEIGHBORS_INDEX]-1] = node;
   }
 }
 
 void node2_t::kill_children(){
-  total_neighbors = 2;
+  data[TOTAL_NEIGHBORS_INDEX] = 2;
   node_t ** status = NULL;
-  status = (node_t **)realloc(neighbors,total_neighbors*sizeof(node_t *));
+  status = (node_t **)realloc(neighbors,data[TOTAL_NEIGHBORS_INDEX]*sizeof(node_t *));
   if(status!=NULL){
     //cerr<<" expanded the size of neighbors array\n";
     neighbors = status;
@@ -193,14 +202,21 @@ void node2_t::kill_children(){
     cerr<<"Problem shrinking neighbors array in kill_children\n";
     exit(1);
   }
-  neighbors[total_neighbors-1] = NULL;
+  neighbors[data[TOTAL_NEIGHBORS_INDEX]-1] = NULL;
 }
 
 char node2_t::get_val(){
-  return data[CHARVAL_INDEX];
+  //cerr<<"Node2 val is "<<data[TAIL_INDEX]<<" with tail "<<data+TAIL_INDEX<<endl;
+  return data[TAIL_INDEX];
 }
 void node2_t::set_val(char val){
-  data[CHARVAL_INDEX] = val;
+  //ignore this request
+  //data[CHARVAL_INDEX] = val;
+}
+
+bool node2_t::get_is_indexed(){
+  int metadata = data[METADATA_INDEX];
+  return (metadata>>BIT_INDEX_IS_INDEXED)&1;
 }
 
 bool node2_t::get_is_leaf(){
@@ -208,6 +224,11 @@ bool node2_t::get_is_leaf(){
   return (metadata>>BIT_INDEX_IS_LEAF)&1;
 
 }
+
+void node2_t::set_is_indexed(bool is_indexed){
+  data[METADATA_INDEX] |= 1 << BIT_INDEX_IS_INDEXED;
+}
+
 void node2_t::set_is_leaf(bool is_leaf){
   data[METADATA_INDEX] |= 1 << BIT_INDEX_IS_LEAF;
 }
@@ -242,7 +263,7 @@ node_t * node2_t::get_child(char val){
   node_t * node=NULL;
   int i=1;
   bool found =false;
-  while(i<total_neighbors && !found){
+  while(i<data[TOTAL_NEIGHBORS_INDEX] && !found){
     if(neighbors[i]!=NULL && neighbors[i]->get_val()==val) {
       node = neighbors[i];
       found = true;
@@ -252,9 +273,6 @@ node_t * node2_t::get_child(char val){
   return node;
 }
 
-bool node2_t::is_indexed(){
-  return false;
-}
 
 node_t * node2_t::get_parent(){
   return neighbors[0];
