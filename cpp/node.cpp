@@ -231,11 +231,8 @@ void node2_t::set_is_indexed(bool is_indexed){
 }
 
 void node2_t::set_is_leaf(bool is_leaf){
-  cerr<<"DEBUGNODE2: is leaf "<<is_leaf<<endl;
-  cerr<<"DEBUGNODE2: before "<<get_is_leaf()<<endl;
   if(is_leaf) data[METADATA_INDEX] |= is_leaf << BIT_INDEX_IS_LEAF;
   else data[METADATA_INDEX] &= is_leaf << BIT_INDEX_IS_LEAF;
-  cerr<<"DEBUGNODE2: after "<<get_is_leaf()<<endl;
 }
 
 string node2_t::get_tail(){

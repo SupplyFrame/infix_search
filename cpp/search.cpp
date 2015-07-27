@@ -132,6 +132,8 @@ void search_t::add(string word){
               // copy this node's substring over
               old_fork->set_val(traverse_tail[tail_index]);
               old_fork->set_tail(traverse_tail.substr(tail_index));
+              old_fork->set_parent(traverse);
+              if(debug)cerr<<"Old fork has parent "<<old_fork->get_parent()<<endl;
               // move this node's children to old_fork
               node_list_t nl = traverse->get_children();
               if(nl.size()){
@@ -140,6 +142,7 @@ void search_t::add(string word){
                   node_t * grandchild = *it; 
                   if(debug)cerr<<"Setting child "<<grandchild->get_val()<<" with tail "<<grandchild->get_tail()<<endl;
                   old_fork->set_child(grandchild->get_val(),grandchild);
+                  grandchild->set_parent(old_fork);
                 }
                 traverse->kill_children();
               }
@@ -190,12 +193,14 @@ void search_t::add(string word){
 }
 
 void search_t::traverse_up(tree_pos_val_t tpv,stack<char> & up_stack){
+  bool debug = true;
   node_t * node = tpv.first;
   int charindex = tpv.second;
   if(node==head) return;
   else{
     int i=charindex;
     string tail = node->get_tail();
+    if(debug)cerr<<"traverse up tail is "<<tail<<endl;
     while(i>=0){
       up_stack.push(tail[i]);
       --i;
@@ -207,18 +212,23 @@ void search_t::traverse_up(tree_pos_val_t tpv,stack<char> & up_stack){
 }
 
 void search_t::traverse_down_util(node_t * node,int tailindex, char path[],int pathLen,list<string> & suffixes){
-  bool debug = false;
-  path[pathLen] = node->get_val();
-  if(debug ) cerr<<"parent-node at index "<<pathLen<<" is "<<node->get_parent()->get_val()<<node->get_val()<<" with address "<<node<<" and tail "<<node->get_tail()<<endl;
-  ++pathLen;
-  path[pathLen]='\0';
+  bool debug = true;
+  string tail = node->get_tail();
+  cerr<<"TRAVERSEDOWN: tail is "<<tail<<" tailindex "<<tailindex<<" path len "<<pathLen<<endl;
+  int i = tailindex;
+  while(i<tail.length()){
+    path[pathLen++] = tail[i]; 
+    ++i;
+  }
+  //path[pathLen] = node->get_val();
+  if(debug ) cerr<<"parent-node at index "<<pathLen<<" is "<<node->get_parent()->get_tail()<<"("<<node->get_parent() <<"),"<<node->get_tail()<<endl;
+  //++pathLen;
   //if(debug) cerr<<"Node at addr "<<node<<" has tail "<<node->get_tail()<<endl;
   if (node->get_is_leaf() ){ 
+    path[pathLen]='\0';
     string pathstr = string(path);
-    ostringstream oss;
-    oss<<pathstr<<"*"<<node->get_tail();
-    suffixes.push_back(oss.str());
-    //suffixes.push_back(pathstr);
+    if(debug) cerr<<"Path str is now "<<pathstr<<endl;
+    suffixes.push_back(pathstr);
   }
   node_list_t node_list = node->get_children();
   for(node_list_t::iterator it = node_list.begin();it!=node_list.end();it++){
@@ -226,7 +236,8 @@ void search_t::traverse_down_util(node_t * node,int tailindex, char path[],int p
   //for(node_map_t::iterator it = node->child_map.begin();it!=node->child_map.end();it++){
     node_t * node = *it;
     //++pathLen;
-    traverse_down_util(node,tailindex,path,pathLen,suffixes);
+    if(debug)cerr<<"TRAVERSING DOWN ONE GENERATION\n";
+    traverse_down_util(node,0,path,pathLen,suffixes);
   } 
 }
 
@@ -241,8 +252,8 @@ void search_t::traverse_down(node_t * node,list<string> & suffixes,string orig_k
 bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_pos_val_t start,string orig_key,bool & exact_match){
   bool debug = true;
   //if(debug)cerr<<"Substring is "<<sub_key<<" start,end is "<<start->get_val()<<","<<node->get_val()<<endl;
-  if(sub_key.length()<2 || node==NULL){
-    if(debug)cerr<<"Found with less than two characters!\n";  
+  if(sub_key.length()<1 || node==NULL){
+    if(debug)cerr<<"Found with less than one characters!\n";  
     stack<char> up_stack;
     --start.second;
     traverse_up(start,up_stack);
@@ -282,6 +293,10 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
     }else{
         cout<<"MATCH TO with no suffix "<<prefix<<"*"<<orig_key<<endl;
     }
+    if(prefix.length()){
+      if(debug) cerr<<"Prefix exists so not an exact match\n";
+      exact_match = false;
+    }
     return true;
   }
   string node_tail = node->get_tail();
@@ -297,7 +312,7 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
   }
   if(debug) cerr<<"Tail and key index are "<<tailindex<<","<<keyindex<<endl;
   if(keyindex==key_len){
-    exact_match = node->get_is_leaf();
+    exact_match = node->get_is_leaf() && tailindex==node_tail_len;
     if(exact_match){
       if(debug)cerr<<"Exact match is found!\n";
       find_path_util(NULL,tailindex,"",start,orig_key,exact_match);
@@ -358,31 +373,30 @@ void search_t::index_trie(node_t * current,node_t * parent){
   bool debug = true;
   string tail = current->get_tail();
   int tail_len = tail.length();
-  if(debug)cerr<<"INDEX_TRIE:current node is tail "<<tail<<endl;
+  if(debug)cerr<<"INDEX_TRIE:current node is tail "<<tail<<" with leaf status "<<current->get_is_leaf()<<endl;
   if(parent!=NULL ){
-    for(int i=0;i<tail_len;++i){
+    for(int i=0;i<tail_len-1;++i){
       tree_pos_key_t tp_key;
-      char key[3];
-      key[2] = '\0';
-      if(i==0){
-        string parent_tail = parent->get_tail();
-        int parent_tail_len = parent_tail.length();
-        tp_key.first = parent_tail[parent_tail_len-1];
-      }else{
-        tp_key.first = tail[i-1];
-      }
-      tp_key.second = tail[i];
+      tp_key.first = tail[i];
+      tp_key.second = tail[i+1];
       tree_pos_val_t tp_val;
       tp_val.first = current;
-      tp_val.second = i-1;
-      if(debug)cerr<<"INDEX_TRIE:Pair to add is "<<tp_key.first<<","<<tp_key.second<<":"<<tp_val.first<<","<<tp_val.second<<"("<<(int)tp_val.second<<")"<<endl;
-      //tree_pos_t tp = tree_pos_t(current,i-1);
+      tp_val.second = i;
+      if(debug)cerr<<"INDEX_TRIE:Pair to add is "<<tp_key.first<<","<<tp_key.second<<":"<<tp_val.first<<","<<(int)tp_val.second<<endl;
       tpm[tp_key].push_back(tp_val);
     }
   }
   node_list_t nl = current->get_children();
   for(node_list_t::iterator it = nl.begin();it!=nl.end();++it){
     node_t * curr = *it;
+    tree_pos_key_t tp_key;
+    tp_key.first = tail[tail_len-1];
+    tp_key.second = curr->get_val();
+    tree_pos_val_t tp_val;
+    tp_val.first = current;
+    tp_val.second = tail_len-1;
+    if(debug)cerr<<"INDEX_TRIE:Pair to add cross descendant is "<<tp_key.first<<","<<tp_key.second<<":"<<tp_val.first<<","<<(int)tp_val.second<<endl;
+     tpm[tp_key].push_back(tp_val);
     if(debug)cerr<<"INDEX_TRIE:recursing on descendant\n";
     index_trie(curr,current);
   }
