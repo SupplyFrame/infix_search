@@ -1,0 +1,3 @@
+SORT_INPUT=/user/gchen/parts_lookup.gz
+SHARDS=10
+SORT_OUTPUT=/user/gchen/parts_lookup_sorted
