@@ -28,8 +28,20 @@ int main(int argc,char * argv[]){
     cout<<"Size of node2: "<<sizeof(node2_t)<<endl;
     return 1;
   }
-  search_t search(argc,argv);
+  int arg=0;
+  string algorithm,dict_file,query_file;
+  for(int arg=1;arg<argc;++arg){
+    if (strcmp(argv[arg],"--algorithm")==0){
+      algorithm = argv[arg+1];
+    }else if (strcmp(argv[arg],"--dict")==0){
+      dict_file = argv[arg+1];
+    }else if (strcmp(argv[arg],"--query")==0){
+      query_file = argv[arg+1];
+    }
+  }
+  search_t search;
   bool simple = false;
-  search.run(simple);
+  search.run(simple,algorithm,dict_file,query_file);
+  //while(true);
   return 0;
 }

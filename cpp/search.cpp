@@ -1,3 +1,4 @@
+#include<stdio.h>
 #include<iostream>
 #include<sstream>
 #include<fstream>
@@ -12,22 +13,19 @@ using namespace std;
 #include"search.hpp"
 
 int search_t::node_count;
-search_t::search_t(int argc,char * argv[]){
+search_t::search_t(){
   head=NULL;
   traverse=head;
-  int arg=0;
-  for(int arg=1;arg<argc;++arg){
-    if (strcmp(argv[arg],"--algorithm")==0){
-      algorithm = argv[arg+1];
-    }else if (strcmp(argv[arg],"--dict")==0){
-      dict_file = argv[arg+1];
-    }else if (strcmp(argv[arg],"--query")==0){
-      query_file = argv[arg+1];
-    }
-  }
+  row_buffer = new char[1000];
+  cerr<<"constructed\n";
 }
 
-void search_t::run(bool simple){
+search_t::~search_t(){
+  fclose(pFile);
+  delete[] row_buffer;
+}
+
+void search_t::run(bool simple,string algorithm,string dict_file, string query_file){
   if(simple){
     string words[]={"baby","bad","bank","box","dad","dance","abdade","abdadoma","dadomb"};
 		for(int i=0;i<9;++i){
@@ -41,19 +39,29 @@ void search_t::run(bool simple){
     for(int i=0;i<1;++i){
       //bool res = find(keys[i]);
       //cerr<<"Result for key "<<keys[i]<<":"<<res<<endl;
-      find_path(keys[i]);
+	  vector<string> found_keys;
+      find_path(keys[i],found_keys);
     }
   }else{
     if(algorithm.compare("trie")==0){
-      read_input(dict_file.data());
-      //string keys[]={"DCRK","DCRK500","##BP","DNA"};
       vector<string> keys;
       read_query(query_file.data(),keys);
-      index_trie(head,NULL);
+      read_input(dict_file.data());
+	  //char * buffer = new char[1000];
+	  //string val = extract_row("GRPM1L-69PCBSR34-40C-.250513");
+	  //string val(buffer);
+	  //cerr<<"Value is '"<<val<<"'"<<endl;
+      //exit(0);
+      //string keys[]={"DCRK","DCRK500","##BP","DNA"};
       double start = clock();
       for(int i=0;i<keys.size();++i){
         cout<<"Result for key "<<keys[i]<<":"<<endl;
-        find_path(keys[i]);
+        vector<string> found_keys;
+		find_path(keys[i],found_keys);
+		for(int i=0;i<found_keys.size();++i){
+		  string row = extract_row(found_keys[i]);
+	      cout<<" "<<i<<": "<<found_keys[i]<<" : "<<row<<endl;
+		}
       }
       cerr<<"TIME TO EXECUTE QUERYS: "<<(clock()-start)/CLOCKS_PER_SEC<<endl;
     }else if(algorithm.compare("linear")==0){
@@ -80,7 +88,7 @@ void search_t::add_to_lookup(char parent_val,node_t * child_node){
 }
 
 void search_t::add(string word){
-  bool debug = true;
+  bool debug = false;
   word = "*"+word;
   if(debug)cerr<<"\nAdding "<<word<<endl;
   int len = word.length();
@@ -193,7 +201,7 @@ void search_t::add(string word){
 }
 
 void search_t::traverse_up(tree_pos_val_t tpv,stack<char> & up_stack){
-  bool debug = true;
+  bool debug = false;
   node_t * node = tpv.first;
   int charindex = tpv.second;
   if(node==head) return;
@@ -212,9 +220,9 @@ void search_t::traverse_up(tree_pos_val_t tpv,stack<char> & up_stack){
 }
 
 void search_t::traverse_down_util(node_t * node,int tailindex, char path[],int pathLen,list<string> & suffixes){
-  bool debug = true;
+  bool debug = false;
   string tail = node->get_tail();
-  cerr<<"TRAVERSEDOWN: tail is "<<tail<<" tailindex "<<tailindex<<" path len "<<pathLen<<endl;
+  if(debug)cerr<<"TRAVERSEDOWN: tail is "<<tail<<" tailindex "<<tailindex<<" path len "<<pathLen<<endl;
   int i = tailindex;
   while(i<tail.length()){
     path[pathLen++] = tail[i]; 
@@ -249,8 +257,8 @@ void search_t::traverse_down(node_t * node,list<string> & suffixes,string orig_k
 }
 
 
-bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_pos_val_t start,string orig_key,bool & exact_match){
-  bool debug = true;
+bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_pos_val_t start,string orig_key,bool & exact_match,vector<string> & found_keys){
+  bool debug = false;
   //if(debug)cerr<<"Substring is "<<sub_key<<" start,end is "<<start->get_val()<<","<<node->get_val()<<endl;
   if(sub_key.length()<1 || node==NULL){
     if(debug)cerr<<"Found with less than one characters!\n";  
@@ -278,7 +286,8 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
     }else{ 
       // case where tail was the suffix. Add to suffixes list
       ostringstream oss;
-      oss<<orig_key<<"*"<<sub_key;
+      oss<<orig_key<<sub_key;
+      //oss<<orig_key<<"*"<<sub_key;
       string newsuffix = oss.str();
       if(debug) cerr<<"Adding "<<newsuffix<<" to suffix list\n";
       suffixes.push_back(newsuffix);
@@ -288,10 +297,18 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
       for(list<string>::iterator it = suffixes.begin();it!=suffixes.end();it++){
         string suffix = *it;
         if(debug)cerr<<"SUFFIX: "<<suffix<<endl;
-        cout<<"MATCH TO with suffix "<<prefix<<"*"<<suffix<<endl;
+        cerr<<"MATCH TO with suffix "<<prefix<<suffix<<endl;
+        //cout<<"MATCH TO with suffix "<<prefix<<"*"<<suffix<<endl;
+		ostringstream oss;
+		oss<<prefix<<suffix;
+		found_keys.push_back(oss.str());
       }
     }else{
-        cout<<"MATCH TO with no suffix "<<prefix<<"*"<<orig_key<<endl;
+      cerr<<"MATCH TO with no suffix "<<prefix<<orig_key<<endl;
+      //cout<<"MATCH TO with no suffix "<<prefix<<"*"<<orig_key<<endl;
+      ostringstream oss;
+      oss<<prefix<<orig_key;
+      found_keys.push_back(oss.str());
     }
     if(prefix.length()){
       if(debug) cerr<<"Prefix exists so not an exact match\n";
@@ -315,10 +332,10 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
     exact_match = node->get_is_leaf() && tailindex==node_tail_len;
     if(exact_match){
       if(debug)cerr<<"Exact match is found!\n";
-      find_path_util(NULL,tailindex,"",start,orig_key,exact_match);
+      find_path_util(NULL,tailindex,"",start,orig_key,exact_match,found_keys);
     }else{
       if(debug)cerr<<"Suffixes remain!\n";
-      find_path_util(node,tailindex,"",start,orig_key,exact_match);
+      find_path_util(node,tailindex,"",start,orig_key,exact_match,found_keys);
     }
   }else{
     if(tailindex<node_tail_len){
@@ -333,24 +350,22 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
         return false;
       }else{
         if(debug)cerr<<" Recursing on subkey "<<newstr<<"!\n";
-        find_path_util(child,0,newstr,start,orig_key,exact_match);
+        find_path_util(child,0,newstr,start,orig_key,exact_match,found_keys);
       }
     }
   }
   return false;
 }
 
-void search_t::find_path(string key){
-  bool debug = true;
+void search_t::find_path(string key,vector<string> & found_keys){
+  bool debug = false;
   int keylen = key.length();
   tree_pos_key_t tp_key;
   tp_key.first = key[0];
   tp_key.second = key[1];
   if(tpm.find(tp_key)==tpm.end()){
     cerr<<"Cannot start a path with key "<<key[0]<<" and "<<key[1]<<"!";
-    return;
-  }
-  else{
+  }else{
     tree_pos_val_vector_t nl = tpm[tp_key];
     bool exact_match = false;
     if(debug)cerr<<"Node vector is of length: "<<nl.size()<<endl;
@@ -359,7 +374,7 @@ void search_t::find_path(string key){
       node_t * cur = tpv.first;
       int tailindex = (int)tpv.second;
       if(debug)cerr<<"Calling path util from start for pair "<<tp_key.first<<","<<tp_key.second<<"("<<cur<<","<<tailindex<<")\n";
-      find_path_util(cur,tailindex,key.substr(0),tpv,key,exact_match);
+      find_path_util(cur,tailindex,key.substr(0),tpv,key,exact_match,found_keys);
       //if(debug)cerr<<"In node list search, exact match "<<exact_match<<endl;
       if(exact_match){
         if(debug)cerr<<"Exact match found. Breaking early from lookup table search\n";
@@ -370,7 +385,7 @@ void search_t::find_path(string key){
 }
 
 void search_t::index_trie(node_t * current,node_t * parent){
-  bool debug = true;
+  bool debug = false;
   string tail = current->get_tail();
   int tail_len = tail.length();
   if(debug)cerr<<"INDEX_TRIE:current node is tail "<<tail<<" with leaf status "<<current->get_is_leaf()<<endl;
@@ -428,16 +443,43 @@ void search_t::read_input(const char * dict_file){
     cerr<<"Can't open "<<dict_file<<"!\n";
     exit(1);
   }
+  pFile = fopen(dict_file,"rb");
   string line;
   int i=0;
   double start = clock();
+  ofstream ofs_map("mapfile.txt");
+  off_t pos = 0;
   while(getline(ifs,line)){
-    add(line);
+    int delim_pos = line.find("\t");
+	string mpn;
+	if(delim_pos==-1){
+		mpn = line;
+		//cerr<<"No tab, adding "<<line<<endl;
+	}else{
+		mpn = line.substr(0,delim_pos);
+		//cerr<<"With tab, adding "<<mpn<<endl;
+	}
+	add(mpn);
+	pair<off_t,int> p(pos,line.length());
+	row_lookup_map[mpn] = p;
+	ofs_map<<mpn<<"\t"<<pos<<endl;
+	pos+=line.length()+1;
     if(i%100000==0)cerr<<"Current node count at line "<<i<<": "<<node_count<<endl;
     ++i;
   }
+  ofs_map.close();
   cerr<<"TIME TO LOAD AND BUILD TRIE: "<<(clock()-start)/CLOCKS_PER_SEC<<endl;
   ifs.close();
+  index_trie(head,NULL);
+}
+
+string search_t::extract_row(string key){
+  if(row_lookup_map.find(key)==row_lookup_map.end()) return "Not found.";
+  pair<off_t,int> p = row_lookup_map[key];
+  int rc = fseeko(pFile,p.first,SEEK_SET);
+  fread(row_buffer,1,p.second,pFile);
+  string retstr = string(row_buffer);
+  return retstr;
 }
 
 void search_t::print_lookup(){
