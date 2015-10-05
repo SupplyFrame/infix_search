@@ -1,3 +1,4 @@
+#include<stack>
 struct tree_pos_key2_t{
   char a;
   char b;
