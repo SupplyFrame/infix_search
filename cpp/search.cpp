@@ -14,6 +14,7 @@ using namespace std;
 
 int search_t::node_count;
 search_t::search_t(){
+  pFile = NULL;
   head=NULL;
   traverse=head;
   row_buffer = new char[1000];
@@ -21,7 +22,7 @@ search_t::search_t(){
 }
 
 search_t::~search_t(){
-  fclose(pFile);
+  if(pFile!=NULL) fclose(pFile);
   delete[] row_buffer;
 }
 
@@ -297,14 +298,14 @@ bool search_t::find_path_util(node_t * node,int tailindex,string sub_key,tree_po
       for(list<string>::iterator it = suffixes.begin();it!=suffixes.end();it++){
         string suffix = *it;
         if(debug)cerr<<"SUFFIX: "<<suffix<<endl;
-        cerr<<"MATCH TO with suffix "<<prefix<<suffix<<endl;
+        if(debug)cerr<<"MATCH TO with suffix "<<prefix<<suffix<<endl;
         //cout<<"MATCH TO with suffix "<<prefix<<"*"<<suffix<<endl;
 		ostringstream oss;
 		oss<<prefix<<suffix;
 		found_keys.push_back(oss.str());
       }
     }else{
-      cerr<<"MATCH TO with no suffix "<<prefix<<orig_key<<endl;
+      if(debug)cerr<<"MATCH TO with no suffix "<<prefix<<orig_key<<endl;
       //cout<<"MATCH TO with no suffix "<<prefix<<"*"<<orig_key<<endl;
       ostringstream oss;
       oss<<prefix<<orig_key;

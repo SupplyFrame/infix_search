@@ -25,28 +25,34 @@
  * in the serialized output if they aren't set.  Note that this requires some
  * manual management in some languages.
  */
-struct Work {
-  1: i32 num1 = 0,
-  2: i32 num2,
-  3: optional string comment,
-}
 
 /**
  * Structs can also be exceptions, if they are nasty.
  */
-exception InvalidOperation {
-  1: i32 whatOp,
-  2: string why
-}
+
+//struct Work {
+//  1: i32 num1 = 0,
+//  2: i32 num2,
+//  3: optional string comment,
+//}
+
+//exception InvalidOperation {
+//  1: i32 whatOp,
+//  2: string why
+//}
+
+namespace cpp infix
+namespace java infix
 
 /**
  * Ahh, now onto the cool part, defining a service. Services just need a name
  * and can optionally inherit from another service using the extends keyword.
  */
-service remote_infix_search{
 
-   void ping(),
-
-   list<string> find_matches(1:string key),
-
+service RemoteInfixSearch{
+   i32 ping(),
+   list<string> findMatches(1:string key),
+   i32 registerService(1:string host,2:i32 port),
+   i32 deregisterService(1:string host,2:i32 port),
 }
+
