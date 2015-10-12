@@ -6,10 +6,13 @@
 #include <thrift/concurrency/ThreadManager.h>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TJSONProtocol.h>
+#include <thrift/protocol/TDebugProtocol.h>
 #include <thrift/server/TSimpleServer.h>
 #include <thrift/server/TThreadPoolServer.h>
+#include <thrift/transport/TFileTransport.h>
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TFileTransport.h>
+#include <thrift/transport/TSimpleFileTransport.h>
 #include <thrift/transport/TServerSocket.h>
 #include <thrift/transport/TTransportUtils.h>
 #include <thrift/transport/TBufferTransports.h>
@@ -215,33 +218,13 @@ class RemoteInfixSearchHandler : virtual public RemoteInfixSearchIf {
 };
 
 int main(int argc, char **argv) {
-  int port = -1;
-  int service_type = -1;
-  if (argc<2){
-    cerr<<"Usage: service_cpp [OPTION]\n";
-    cerr<<"Starts the part number search service as a client or server\n\n";
-    cerr<<"  --type	type of service: '0' for master or '1' for slave\n";
-    cerr<<"  --port	port to listen on\n";
-    cerr<<"  --dataset	path of dataset\n";
-    return 1;
-  }
-  int arg=1;
-  string dataset="";
-  while(arg<argc){
-    printf("At str %s\n",argv[arg]);
-    if(strcmp(argv[arg],"--port")==0){
-      port = atoi(argv[++arg]);
-    }else if(strcmp(argv[arg],"--type")==0){
-      service_type = atoi(argv[++arg]);
-    }else if(strcmp(argv[arg],"--dataset")==0){
-      dataset = argv[++arg];
-    }
-    ++arg;
-  }
-  printf("Configuration is service %d port %d dataset %s\n",service_type,port,dataset.data());
-  RemoteInfixSearchHandler handler(service_type,port,dataset);
-  handler.start_http_server();
-  //handler.start_server();
-  return 0;
+  boost::shared_ptr<TTransport> socket(new TSimpleFileTransport("debug.txt",true,false));
+  boost::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
+  boost::shared_ptr<TProtocol> protocol(new TJSONProtocol(transport));
+  boost::shared_ptr<RemoteInfixSearchClient> client(new RemoteInfixSearchClient(protocol));
+  transport->open();
+  client->registerService("localhost",8080);
+  transport->close();
+  
 }
 

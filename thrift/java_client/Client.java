@@ -1,8 +1,13 @@
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
+import org.apache.thrift.protocol.TSimpleJSONProtocol;
+import org.apache.thrift.transport.TSimpleFileTransport;
+import org.apache.thrift.transport.TFileTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -22,6 +27,16 @@ public class Client{
   }
 
   private TTransport transport = null;
+  private TTransport fileTransport = null;
+
+  private RemoteInfixSearch.Client initJSONClient()
+  throws TTransportException,IOException{
+    fileTransport = new TSimpleFileTransport("debug.txt",true,true);
+    fileTransport.open();
+    TProtocol protocol = new TJSONProtocol(fileTransport);
+    RemoteInfixSearch.Client client = new RemoteInfixSearch.Client(protocol);
+    return client;
+  }
 
   private RemoteInfixSearch.Client initClient()
   throws TTransportException{
@@ -33,7 +48,8 @@ public class Client{
   }
 
   private void finalizeClient(){
-    transport.close();
+    if(transport==null) transport.close();
+    if(fileTransport==null) fileTransport.close();
   }
 
   public static void main(String[] args){
@@ -73,7 +89,7 @@ public class Client{
       }
       System.err.println("Master host and port "+masterHost+" "+masterPort+". Command is "+command);
       Client client = new Client(masterHost,masterPort);
-      RemoteInfixSearch.Client remoteInfixSearchClient = client.initClient();
+      RemoteInfixSearch.Client remoteInfixSearchClient = client.initJSONClient();
       if(command == Client.COMMAND_REGISTER){
 
         System.err.println("Registering worker on host "+workerHost+" with port "+workerPort);
@@ -91,6 +107,8 @@ public class Client{
       }
       client.finalizeClient();
     }catch(TException x){
+      x.printStackTrace();
+    }catch(IOException x){
       x.printStackTrace();
     }
   }
